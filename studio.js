@@ -9,6 +9,24 @@ let groupUrl = null;
 let groundEl = null;
 let tone = { l: 110, r: 118, g: 110, b: 102 };
 
+function readSettings() {
+  return {
+    ai: !!(document.getElementById("ai") && document.getElementById("ai").checked),
+    mask: Number(document.getElementById("mask") && document.getElementById("mask").value || 72),
+    foot: Number(document.getElementById("foot") && document.getElementById("foot").value || 42),
+    tol: Number(document.getElementById("tol") && document.getElementById("tol").value || 64),
+    contrast: Number(document.getElementById("con") && document.getElementById("con").value || 110) / 100,
+  };
+}
+function writeSettings(s) {
+  if (!s) return;
+  const ai = document.getElementById("ai"); if (ai) ai.checked = !!s.ai;
+  const mask = document.getElementById("mask"); if (mask) { mask.value = s.mask; const v = document.getElementById("maskv"); if (v) v.textContent = s.mask; }
+  const foot = document.getElementById("foot"); if (foot) { foot.value = s.foot; const v = document.getElementById("footv"); if (v) v.textContent = s.foot; }
+  const tol = document.getElementById("tol"); if (tol) { tol.value = s.tol; const v = document.getElementById("tolv"); if (v) v.textContent = s.tol; }
+  const con = document.getElementById("con"); if (con) { const n = Math.round(s.contrast * 100); con.value = n; const v = document.getElementById("conv"); if (v) v.textContent = (n/100).toFixed(2); }
+}
+
 function isStill(f) {
   if (f.type && f.type.startsWith("image/")) return true;
   return /\.(jpe?g|png|webp)$/i.test(f.name);
@@ -281,11 +299,11 @@ function gradeCut(canvas, contrast) {
   ctx.putImageData(image, 0, 0);
 }
 
-function hardenMask(canvas) {
+function hardenMask(canvas, strength) {
   const ctx = canvas.getContext("2d", { willReadFrequently: true });
   const image = ctx.getImageData(0, 0, canvas.width, canvas.height);
   const d = image.data, w = canvas.width, h = canvas.height;
-  const strength = Number(document.getElementById("mask") && document.getElementById("mask").value || 72);
+  strength = strength == null ? 72 : strength;
   const lo = 50 + strength * 0.9;
   const span = 90;
   const a = new Uint8ClampedArray(w * h);
@@ -383,10 +401,11 @@ function bboxFromAlpha(canvas) {
   return { x: minX, y: minY, w: maxX - minX + 1, h: maxY - minY + 1 };
 }
 
-function placeOnPlate(cutCanvas, contrast, origImg) {
-  hardenMask(cutCanvas);
-  keepFoot(cutCanvas, origImg, document.getElementById("foot") && document.getElementById("foot").value);
-  gradeCut(cutCanvas, contrast || 1.1);
+function placeOnPlate(cutCanvas, contrast, origImg, s) {
+  s = s || readSettings();
+  hardenMask(cutCanvas, s.mask);
+  keepFoot(cutCanvas, origImg, s.foot);
+  gradeCut(cutCanvas, contrast || s.contrast || 1.1);
   const bb = bboxFromAlpha(cutCanvas);
   const maxW = W * 0.78;
   const maxH = H * 0.62;
@@ -399,7 +418,7 @@ function placeOnPlate(cutCanvas, contrast, origImg) {
   out.width = W; out.height = H;
   const ctx = out.getContext("2d");
   paintPlate(ctx);
-  const foot = Number(document.getElementById("foot") && document.getElementById("foot").value || 0);
+  const foot = Number(s.foot || 0);
   if (foot < 18) {
     ctx.save();
     ctx.filter = "blur(22px)";
@@ -413,10 +432,11 @@ function placeOnPlate(cutCanvas, contrast, origImg) {
   return { canvas: out, photo: cutCanvas, bbox: { x: dx, y: dy, w: dw, h: dh }, meanLuma: tone.l, width: out.width, height: out.height };
 }
 
-async function cutFromFile(file, t, c, onStatus) {
+async function cutFromFile(file, s, onStatus) {
+  s = s || readSettings();
   const orig = await loadImage(file);
-  const wantAI = document.getElementById("ai") && document.getElementById("ai").checked;
-  if (wantAI && typeof window.cutWithAI === "function") {
+  const wantAI = s.ai && typeof window.cutWithAI === "function";
+  if (wantAI) {
     try {
       onStatus("AI cutting… first time downloads a model (~50MB).");
       let rgba = await Promise.race([
@@ -424,12 +444,12 @@ async function cutFromFile(file, t, c, onStatus) {
         new Promise((_, rej) => setTimeout(() => rej(new Error("AI timed out")), 120000)),
       ]);
       rgba = toCanvas(rgba, orig.width, orig.height);
-      return forceFrame(placeOnPlate(rgba, c, orig));
+      return forceFrame(placeOnPlate(rgba, s.contrast, orig, s));
     } catch (err) {
       onStatus("AI skipped: " + (err && err.message ? err.message : "using paper match"));
     }
   }
-  return forceFrame(frameStill(orig, t, c));
+  return forceFrame(frameStill(orig, s));
 }
 
 function forceFrame(cut) {
@@ -450,11 +470,12 @@ function forceFrame(cut) {
   return { canvas: out, photo: cut && cut.photo || out, bbox: { x: 0, y: 0, w: W, h: H }, meanLuma: tone.l, width: W, height: H };
 }
 
-function frameStill(img, tolerance, contrast) {
-  tolerance = tolerance || 64;
-  contrast = contrast || 1.1;
+function frameStill(img, s) {
+  s = s || readSettings();
+  const tolerance = s.tol || 64;
+  const contrast = s.contrast || 1.1;
   const cut = cutPot(img, tolerance);
-  keepFoot(cut.canvas, img, document.getElementById("foot") && document.getElementById("foot").value);
+  keepFoot(cut.canvas, img, s.foot);
   gradeCut(cut.canvas, contrast);
   const bb = bboxFromAlpha(cut.canvas);
   const maxW = W * 0.78;
@@ -528,7 +549,7 @@ function addFiles(list){
   if (!picked.length) { status("No JPEGs in that drop."); return; }
   picked.forEach(file => {
     const name = file.name.replace(/\.[^.]+$/,"");
-    items.push({ name, file, url: URL.createObjectURL(file), selected: true });
+    items.push({ name, file, url: URL.createObjectURL(file), selected: true, settings: readSettings() });
   });
   if (items.length > 20) items.length = 20;
   render();
@@ -560,18 +581,18 @@ function loadImage(file){
 let assetsReady = null;
 document.getElementById("run").onclick = async () => {
   if (!items.length) { status("Add original JPEGs first, then Process all."); return; }
-  const t = Number(document.getElementById("tol").value);
-  const c = Number(document.getElementById("con").value) / 100;
+  const bar = readSettings();
   const btn = document.getElementById("run");
   btn.disabled = true;
   try {
     if (!assetsReady) assetsReady = loadAssets();
     await assetsReady;
     for (let i=0;i<items.length;i++){
+      const s = items[i].settings || bar;
       status("Processing " + (i+1) + " of " + items.length + "…");
       await new Promise(r => setTimeout(r, 20));
       try {
-        items[i].cut = await cutFromFile(items[i].file, t, c, status);
+        items[i].cut = await cutFromFile(items[i].file, s, status);
         items[i].framed = items[i].cut.canvas;
         if (items[i].framed.width !== W || items[i].framed.height !== H) {
           items[i].cut = forceFrame(items[i].cut);
@@ -615,6 +636,19 @@ function resetStudio() {
   status("Reset.");
 }
 document.getElementById("reset").onclick = resetStudio;
+document.getElementById("selectAll").onclick = () => {
+  if (!items.length) { status("Add JPEGs first."); return; }
+  items.forEach(i => i.selected = true);
+  render();
+  status("All " + items.length + " selected.");
+};
+document.getElementById("applyAll").onclick = () => {
+  if (!items.length) { status("Add JPEGs first."); return; }
+  const s = readSettings();
+  items.forEach(i => { i.settings = Object.assign({}, s); i.selected = true; });
+  render();
+  status("Preset copied to " + items.length + " — Mask " + s.mask + ", Foot " + s.foot + ", Paper " + s.tol + ". Process all.");
+};
 document.getElementById("dl").onclick = async () => {
   let n = 0;
   for (const item of items) {

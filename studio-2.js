@@ -17,7 +17,7 @@ function hardenMask(canvas, strength) {
   const ctx = canvas.getContext("2d", { willReadFrequently: true });
   const image = ctx.getImageData(0, 0, canvas.width, canvas.height);
   const d = image.data, w = canvas.width, h = canvas.height;
-  strength = strength == null ? 72 : strength;
+  strength = strength == null ? 68 : strength;
   const lo = 50 + strength * 0.9;
   const span = 90;
   const a = new Uint8ClampedArray(w * h);
@@ -29,7 +29,7 @@ function hardenMask(canvas, strength) {
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
     if (a[y * w + x] > 18) { if (y < minY) minY = y; if (y > maxY) maxY = y; }
   }
-  const footLine = minY + (maxY - minY) * 0.8;
+  const footLine = minY + (maxY - minY) * 0.72;
   for (let pass = 0; pass < 2; pass++) {
     const copy = a.slice();
     for (let y = 1; y < h - 1; y++) {
@@ -61,7 +61,7 @@ function toCanvas(src, w, h) {
 }
 
 function keepFoot(cutCanvas, origImg, footPct) {
-  footPct = Number(footPct);
+  footPct = footPct == null ? 72 : Number(footPct);
   if (!origImg || footPct < 2) return;
   const w = cutCanvas.width, h = cutCanvas.height;
   const orig = toCanvas(origImg, w, h);
@@ -70,36 +70,36 @@ function keepFoot(cutCanvas, origImg, footPct) {
   const od = orig.getContext("2d", { willReadFrequently: true }).getImageData(0, 0, w, h).data;
   const d = cut.data;
   const bb = bboxFromAlpha(cutCanvas);
-  const R = Math.max(10, Math.round(8 + footPct * 0.38));
-  const yFoot0 = Math.floor(bb.y + bb.h * 0.62);
+  const R = Math.max(14, Math.round(bb.w * 0.08));
+  const yFoot0 = Math.floor(bb.y + bb.h * 0.58);
   const near = new Uint8Array(w * h);
   for (let y = yFoot0; y < bb.y + bb.h && y < h; y++) {
     for (let x = bb.x; x < bb.x + bb.w && x < w; x++) {
-      if (d[(y * w + x) * 4 + 3] < 220) continue;
+      if (d[(y * w + x) * 4 + 3] < 200) continue;
       const x0 = Math.max(0, x - R), x1 = Math.min(w - 1, x + R);
-      const y0 = Math.max(0, y - Math.round(R * 0.35));
-      const y1 = Math.min(h - 1, y + R);
+      const y0 = Math.max(0, y - Math.round(R * 0.3));
+      const y1 = Math.min(h - 1, y + Math.round(R * 1.2));
       for (let yy = y0; yy <= y1; yy++) {
         for (let xx = x0; xx <= x1; xx++) {
           const dx = xx - x, dy = yy - y;
-          if (dx * dx + dy * dy * 1.6 <= R * R) near[yy * w + xx] = 1;
+          if (dx * dx + dy * dy * 1.35 <= R * R) near[yy * w + xx] = 1;
         }
       }
     }
   }
-  const y0 = Math.floor(bb.y + bb.h * 0.7);
+  const y0 = Math.floor(bb.y + bb.h * 0.66);
   const y1 = Math.min(h - 1, Math.ceil(bb.y + bb.h + R));
   for (let y = y0; y <= y1; y++) {
-    const fade = Math.pow(1 - (y - y0) / Math.max(1, y1 - y0), 0.7);
+    const fade = Math.pow(1 - (y - y0) / Math.max(1, y1 - y0), 0.65);
     for (let x = Math.max(0, bb.x - R); x <= Math.min(w - 1, bb.x + bb.w + R); x++) {
       const i = (y * w + x) * 4;
       if (d[i + 3] > 248) continue;
       if (!near[y * w + x]) continue;
       const oL = luma(od[i], od[i + 1], od[i + 2]);
-      const shadow = oL < 165 ? 1.2 : 0.55;
-      const keep = fade * (footPct / 70) * shadow;
+      const shadow = oL < 170 ? 1.35 : 0.5;
+      const keep = fade * shadow;
       if (keep < 0.04) continue;
-      const oa = Math.round(Math.min(210, keep * 200));
+      const oa = Math.round(Math.min(220, keep * 210));
       if (oa <= d[i + 3]) continue;
       d[i] = od[i]; d[i + 1] = od[i + 1]; d[i + 2] = od[i + 2];
       d[i + 3] = Math.max(d[i + 3], oa);
@@ -115,50 +115,6 @@ function keepFoot(cutCanvas, origImg, footPct) {
     }
   }
   ctx.putImageData(cut, 0, 0);
-}
-
-function bodyCentreX(canvas, full) {
-  const ctx = canvas.getContext("2d", { willReadFrequently: true });
-  const image = ctx.getImageData(0, 0, canvas.width, canvas.height);
-  const d = image.data, w = canvas.width;
-  const y1 = Math.floor(full.y + full.h * 0.76);
-  let sx = 0, n = 0;
-  for (let y = full.y; y <= y1; y++) {
-    for (let x = full.x; x < full.x + full.w; x++) {
-      if (d[(y * w + x) * 4 + 3] > 200) { sx += x; n++; }
-    }
-  }
-  if (!n) return full.x + full.w / 2;
-  return sx / n;
-}
-
-function sitOnPlate(cutCanvas, origImg, s) {
-  s = s || readSettings();
-  hardenMask(cutCanvas, s.mask);
-  keepFoot(cutCanvas, origImg, s.foot);
-  gradeCut(cutCanvas, s.contrast || 1);
-  const bb = bboxFromAlpha(cutCanvas);
-  const maxW = W * 0.9;
-  const maxH = H * 0.76;
-  const scale = Math.min(maxW / Math.max(1, bb.w), maxH / Math.max(1, bb.h));
-  const dw = bb.w * scale;
-  const dh = bb.h * scale;
-  const bodyCx = (bodyCentreX(cutCanvas, bb) - bb.x) * scale;
-  let dx = W / 2 - bodyCx;
-  if (dx < 16) dx = 16;
-  if (dx + dw > W - 16) dx = W - 16 - dw;
-  const floor = (typeof window.coveFloor === "number") ? window.coveFloor : 0.91;
-  let dy = H * floor - dh;
-  if (dy < 20) dy = 20;
-  if (dy + dh > H - 12) dy = H - 12 - dh;
-  const out = document.createElement("canvas");
-  out.width = W; out.height = H;
-  const ctx = out.getContext("2d");
-  ctx.imageSmoothingEnabled = true;
-  ctx.imageSmoothingQuality = "high";
-  paintPlate(ctx);
-  ctx.drawImage(cutCanvas, bb.x, bb.y, bb.w, bb.h, dx, dy, dw, dh);
-  return { canvas: out, photo: cutCanvas, bbox: { x: dx, y: dy, w: dw, h: dh }, meanLuma: tone.l, width: W, height: H };
 }
 
 function bboxFromAlpha(canvas) {
@@ -178,28 +134,57 @@ function bboxFromAlpha(canvas) {
   return { x: minX, y: minY, w: maxX - minX + 1, h: maxY - minY + 1 };
 }
 
-function placeOnPlate(cutCanvas, contrast, origImg, s) {
-  s = s || readSettings();
-  if (contrast) s.contrast = contrast;
-  return sitOnPlate(cutCanvas, origImg, s);
+function fitContain(sw, sh, boxW, boxH) {
+  const s = Math.min(boxW / sw, boxH / sh);
+  const dw = sw * s, dh = sh * s;
+  return { s: s, dw: dw, dh: dh, dx: (boxW - dw) / 2, dy: (boxH - dh) / 2 };
 }
 
-function applyAutoCove(img) {
-  if (!window.autoCove || typeof window.extendFromImage !== "function") return;
-  groundEl = window.extendFromImage(img);
+function paintExtendedCove(ctx, img) {
+  const plate = (typeof window.extendFromImage === "function")
+    ? window.extendFromImage(img)
+    : null;
+  if (plate) {
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = "high";
+    ctx.drawImage(plate, 0, 0, W, H);
+    return;
+  }
+  paintPlate(ctx);
+}
+
+function composeIntact(cutCanvas, origImg) {
+  hardenMask(cutCanvas, 68);
+  keepFoot(cutCanvas, origImg, 72);
+  const fit = fitContain(origImg.width, origImg.height, W, H);
+  const out = document.createElement("canvas");
+  out.width = W; out.height = H;
+  const ctx = out.getContext("2d");
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
+  paintExtendedCove(ctx, origImg);
+  ctx.drawImage(cutCanvas, 0, 0, cutCanvas.width, cutCanvas.height, fit.dx, fit.dy, fit.dw, fit.dh);
+  return { canvas: out, photo: cutCanvas, bbox: { x: fit.dx, y: fit.dy, w: fit.dw, h: fit.dh }, meanLuma: tone.l, width: W, height: H };
+}
+
+function sitOnPlate(cutCanvas, origImg, s) {
+  return composeIntact(cutCanvas, origImg);
+}
+function placeOnPlate(cutCanvas, contrast, origImg, s) {
+  return composeIntact(cutCanvas, origImg);
 }
 
 async function cutFromFile(file, s, onStatus) {
   s = s || readSettings();
   const orig = await loadImage(file);
   setOutputSize(orig);
-  applyAutoCove(orig);
+  window.autoCove = true;
   if (typeof window.cutWithAI === "function") {
     try {
       if (onStatus) onStatus("Cutting…");
       let rgba = await window.cutWithAI(file, onStatus);
       rgba = toCanvas(rgba, orig.width, orig.height);
-      return forceFrame(placeOnPlate(rgba, s.contrast, orig, s));
+      return forceFrame(composeIntact(rgba, orig));
     } catch (err) {
       if (onStatus) onStatus("Mask fallback: " + (err && err.message ? err.message : "paper"));
     }
@@ -228,9 +213,8 @@ function forceFrame(cut) {
 }
 
 function frameStill(img, s) {
-  s = s || readSettings();
   setOutputSize(img);
-  applyAutoCove(img);
-  const cut = cutPot(img, s.tol || 64, s.mask);
-  return sitOnPlate(cut.canvas, img, s);
+  window.autoCove = true;
+  const cut = cutPot(img, 64, 68);
+  return composeIntact(cut.canvas, img);
 }

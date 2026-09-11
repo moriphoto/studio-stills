@@ -3,7 +3,7 @@
    2. Sit it on studio-ground.jpg
    3. Grade toward studio-tone.jpg (the PXL look)
 */
-const W = 1920, H = 1080, FEATHER = 18;
+const W = 1920, H = 1080, FEATHER = 8;
 const items = [];
 let groupUrl = null;
 let groundEl = null;
@@ -189,7 +189,7 @@ function cutPot(img, tol) {
     const pb = top[2] + (bot[2] - top[2]) * t;
     if (dist(r, g, b, pr, pg, pb) < tol) return true;
     const chroma = Math.max(r, g, b) - Math.min(r, g, b);
-    if (chroma < 26 && dist(r, g, b, pr, pg, pb) < tol * 1.7) return true;
+    if (chroma < 36 && dist(r, g, b, pr, pg, pb) < tol * 2.1) return true;
     return false;
   };
   const ground = new Uint8Array(w * h);
@@ -221,9 +221,9 @@ function cutPot(img, tol) {
     maxX = Math.floor(w * 0.88);
     maxY = Math.floor(h * 0.88);
   }
-  const footY = minY + (maxY - minY) * 0.62;
+  const footY = minY + (maxY - minY) * 0.72;
   const alpha = new Uint8ClampedArray(w * h);
-  const apron = 88;
+  const apron = 42;
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
     const i = y * w + x;
     if (!ground[i]) { alpha[i] = 255; continue; }
@@ -241,7 +241,7 @@ function cutPot(img, tol) {
       const pg = top[1] + (bot[1] - top[1]) * t;
       const pb = top[2] + (bot[2] - top[2]) * t;
       const plateL = luma(pr, pg, pb);
-      if (L < plateL - 10) {
+      if (L < plateL - 22) {
         const fade = 1 - (distPx - FEATHER) / (apron - FEATHER);
         alpha[i] = Math.round(200 * fade * fade);
         continue;
@@ -249,9 +249,10 @@ function cutPot(img, tol) {
     }
     alpha[i] = 0;
   }
-  blurAlpha(alpha, w, h, 3);
+  blurAlpha(alpha, w, h, 1);
   for (let i = 0; i < w * h; i++) d[i * 4 + 3] = alpha[i];
   ctx.putImageData(image, 0, 0);
+  hardenMask(c);
   return { canvas: c, bbox: { x:minX, y:minY, w:maxX-minX+1, h:maxY-minY+1 } };
 }
 
@@ -280,6 +281,36 @@ function gradeCut(canvas, contrast) {
   ctx.putImageData(image, 0, 0);
 }
 
+function hardenMask(canvas) {
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
+  const image = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const d = image.data, w = canvas.width, h = canvas.height;
+  const a = new Uint8ClampedArray(w * h);
+  for (let i = 0; i < w * h; i++) {
+    const v = d[i * 4 + 3];
+    a[i] = v < 110 ? 0 : v < 220 ? Math.round((v - 110) * 255 / 110) : 255;
+  }
+  for (let pass = 0; pass < 2; pass++) {
+    const copy = a.slice();
+    for (let y = 1; y < h - 1; y++) {
+      for (let x = 1; x < w - 1; x++) {
+        const i = y * w + x;
+        a[i] = Math.min(copy[i], copy[i - 1], copy[i + 1], copy[i - w], copy[i + w]);
+      }
+    }
+  }
+  const copy = a.slice();
+  for (let y = 1; y < h - 1; y++) {
+    for (let x = 1; x < w - 1; x++) {
+      const i = y * w + x;
+      if (copy[i] === 255 || copy[i] === 0) continue;
+      a[i] = (copy[i] + copy[i - 1] + copy[i + 1] + copy[i - w] + copy[i + w]) / 5;
+    }
+  }
+  for (let i = 0; i < w * h; i++) d[i * 4 + 3] = a[i];
+  ctx.putImageData(image, 0, 0);
+}
+
 function bboxFromAlpha(canvas) {
   const ctx = canvas.getContext("2d", { willReadFrequently: true });
   const image = ctx.getImageData(0, 0, canvas.width, canvas.height);
@@ -298,6 +329,7 @@ function bboxFromAlpha(canvas) {
 }
 
 function placeOnPlate(cutCanvas, contrast) {
+  hardenMask(cutCanvas);
   gradeCut(cutCanvas, contrast || 1.1);
   const bb = bboxFromAlpha(cutCanvas);
   const maxW = W * 0.78;
@@ -338,7 +370,7 @@ async function cutFromFile(file, t, c, onStatus) {
 }
 
 function frameStill(img, tolerance, contrast) {
-  tolerance = tolerance || 50;
+  tolerance = tolerance || 64;
   contrast = contrast || 1.1;
   const cut = cutPot(img, tolerance);
   gradeCut(cut.canvas, contrast);

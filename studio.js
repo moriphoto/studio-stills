@@ -178,7 +178,7 @@ function blurAlpha(alpha, w, h, passes) {
   }
 }
 
-function cutPot(img, tol) {
+function cutPot(img, tol, mask) {
   img = peelFrame(trimBars(img));
   let scale = 820 / img.height;
   if (img.width * scale > 1100) scale = 1100 / img.width;
@@ -270,7 +270,7 @@ function cutPot(img, tol) {
   blurAlpha(alpha, w, h, 1);
   for (let i = 0; i < w * h; i++) d[i * 4 + 3] = alpha[i];
   ctx.putImageData(image, 0, 0);
-  hardenMask(c);
+  hardenMask(c, mask);
   return { canvas: c, bbox: { x:minX, y:minY, w:maxX-minX+1, h:maxY-minY+1 } };
 }
 
@@ -474,7 +474,7 @@ function frameStill(img, s) {
   s = s || readSettings();
   const tolerance = s.tol || 64;
   const contrast = s.contrast || 1.1;
-  const cut = cutPot(img, tolerance);
+  const cut = cutPot(img, tolerance, s.mask);
   keepFoot(cut.canvas, img, s.foot);
   gradeCut(cut.canvas, contrast);
   const bb = bboxFromAlpha(cut.canvas);

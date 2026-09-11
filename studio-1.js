@@ -1,12 +1,28 @@
-const W = 1920, H = 1080, FEATHER = 8;
+let W = 1920, H = 1080, FEATHER = 8;
 const items = [];
 let groupUrl = null;
 let groundEl = null;
 let tone = { l: 110, r: 118, g: 110, b: 102 };
 
+function outputIsHigh() {
+  const el = document.getElementById("resHigh");
+  return !!(el && el.checked);
+}
+function setOutputSize(src) {
+  if (outputIsHigh() && src && src.width) {
+    const long = Math.max(src.width, src.height);
+    W = Math.min(4096, Math.max(1920, long));
+    H = Math.round(W * 9 / 16);
+  } else {
+    W = 1920;
+    H = 1080;
+  }
+}
+
 function readSettings() {
   return {
     ai: typeof window.cutWithAI === "function",
+    high: outputIsHigh(),
     mask: Number(document.getElementById("mask") && document.getElementById("mask").value || 68),
     foot: Number(document.getElementById("foot") && document.getElementById("foot").value || 70),
     tol: Number(document.getElementById("tol") && document.getElementById("tol").value || 64),
@@ -65,6 +81,10 @@ function plateRgb(t) {
   return [a[1] + (b[1] - a[1]) * u, a[2] + (b[2] - a[2]) * u, a[3] + (b[3] - a[3]) * u];
 }
 function paintPlate(ctx) {
+  if (groundEl) {
+    ctx.drawImage(groundEl, 0, 0, W, H);
+    return;
+  }
   const image = ctx.createImageData(W, H);
   const d = image.data;
   for (let y = 0; y < H; y++) {

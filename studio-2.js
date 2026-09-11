@@ -70,30 +70,47 @@ function keepFoot(cutCanvas, origImg, footPct) {
   const od = orig.getContext("2d", { willReadFrequently: true }).getImageData(0, 0, w, h).data;
   const d = cut.data;
   const bb = bboxFromAlpha(cutCanvas);
-  const pad = bb.w * (0.05 + footPct / 450);
-  const strip = Math.max(8, (footPct / 100) * Math.max(18, bb.h * 0.32));
-  const y0 = Math.floor(bb.y + bb.h * 0.82);
+  const pad = bb.w * (0.08 + footPct / 380);
+  const strip = Math.max(14, (footPct / 100) * Math.max(28, bb.h * 0.42));
+  const y0 = Math.floor(bb.y + bb.h * 0.72);
   const y1 = Math.min(h - 1, Math.ceil(bb.y + bb.h + strip));
   const x0 = Math.max(0, Math.floor(bb.x - pad));
   const x1 = Math.min(w - 1, Math.ceil(bb.x + bb.w + pad));
   const cx0 = bb.x + bb.w / 2;
   const rx = bb.w / 2 + pad;
   for (let y = y0; y <= y1; y++) {
-    const fade = Math.pow(1 - (y - y0) / Math.max(1, y1 - y0), 1.2);
+    const fade = Math.pow(1 - (y - y0) / Math.max(1, y1 - y0), 0.85);
     for (let x = x0; x <= x1; x++) {
       const i = (y * w + x) * 4;
-      if (d[i + 3] > 240) continue;
+      if (d[i + 3] > 248) continue;
       const side = (x - cx0) / rx;
       const horiz = Math.max(0, 1 - side * side);
-      const keep = fade * horiz * (footPct / 80);
-      if (keep < 0.03) continue;
-      const oa = Math.round(Math.min(190, keep * 200));
+      const oL = luma(od[i], od[i + 1], od[i + 2]);
+      const shadow = oL < 150 ? 1.25 : 0.75;
+      const keep = fade * horiz * (footPct / 62) * shadow;
+      if (keep < 0.025) continue;
+      const oa = Math.round(Math.min(230, keep * 220));
       if (oa <= d[i + 3]) continue;
-      d[i] = od[i]; d[i+1] = od[i+1]; d[i+2] = od[i+2];
+      d[i] = od[i]; d[i + 1] = od[i + 1]; d[i + 2] = od[i + 2];
       d[i + 3] = Math.max(d[i + 3], oa);
     }
   }
   ctx.putImageData(cut, 0, 0);
+}
+
+function bodyCentreX(canvas, full) {
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
+  const image = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const d = image.data, w = canvas.width;
+  const y1 = Math.floor(full.y + full.h * 0.76);
+  let sx = 0, n = 0;
+  for (let y = full.y; y <= y1; y++) {
+    for (let x = full.x; x < full.x + full.w; x++) {
+      if (d[(y * w + x) * 4 + 3] > 200) { sx += x; n++; }
+    }
+  }
+  if (!n) return full.x + full.w / 2;
+  return sx / n;
 }
 
 function sitOnPlate(cutCanvas, origImg, s) {
@@ -107,7 +124,10 @@ function sitOnPlate(cutCanvas, origImg, s) {
   const scale = Math.min(maxW / Math.max(1, bb.w), maxH / Math.max(1, bb.h));
   const dw = bb.w * scale;
   const dh = bb.h * scale;
-  const dx = (W - dw) / 2;
+  const bodyCx = (bodyCentreX(cutCanvas, bb) - bb.x) * scale;
+  let dx = W / 2 - bodyCx;
+  if (dx < 24) dx = 24;
+  if (dx + dw > W - 24) dx = W - 24 - dw;
   const dy = H * 0.86 - dh;
   const out = document.createElement("canvas");
   out.width = W; out.height = H;

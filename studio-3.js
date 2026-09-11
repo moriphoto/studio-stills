@@ -81,7 +81,7 @@ document.getElementById("run").onclick = async () => {
       }
     }
     const ok = items.filter(x => x.framed).length;
-    status(ok ? ("Done — " + ok + " file(s) at 1920 × 1080.") : "Cut failed. Use the original JPEG.");
+    status(ok ? ("Done — " + ok + " file(s) at " + W + " × " + H + ".") : "Cut failed. Use the original JPEG.");
   } catch (err) {
     status("Process failed: " + (err && err.message ? err.message : "open Chrome console"));
   }
@@ -97,9 +97,10 @@ function resetStudio() {
   const hero = document.getElementById("hero");
   if (hero) hero.removeAttribute("src");
   const mask = document.getElementById("mask"); if (mask) { mask.value = 68; document.getElementById("maskv").textContent = "68"; }
-  const foot = document.getElementById("foot"); if (foot) { foot.value = 58; document.getElementById("footv").textContent = "58"; }
+  const foot = document.getElementById("foot"); if (foot) { foot.value = 70; document.getElementById("footv").textContent = "70"; }
   const tol = document.getElementById("tol"); if (tol) { tol.value = 64; document.getElementById("tolv").textContent = "64"; }
   const con = document.getElementById("con"); if (con) { con.value = 110; document.getElementById("conv").textContent = "1.10"; }
+  const web = document.getElementById("resWeb"); if (web) web.checked = true;
   status("Reset.");
 }
 document.getElementById("reset").onclick = resetStudio;
@@ -120,7 +121,8 @@ document.getElementById("dl").onclick = async () => {
   let n = 0;
   for (const item of items) {
     if (!item.framed) continue;
-    download(await toBlob(item.framed), item.name + "-1920.jpg");
+    const tag = item.framed.width + "x" + item.framed.height;
+    download(await toBlob(item.framed), item.name + "-" + tag + ".jpg");
     n++;
     await new Promise(r => setTimeout(r, 250));
   }

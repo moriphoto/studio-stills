@@ -4,7 +4,7 @@ import imglyRemoveBackground from "https://cdn.jsdelivr.net/npm/@imgly/backgroun
 
 window.cutWithAI = async function cutWithAI(file, onStatus) {
   const blob = await imglyRemoveBackground(file, {
-    model: "isnet_quint8",
+    model: "isnet_fp16",
     output: { format: "image/png", quality: 1 },
     progress: (key, current, total) => {
       if (!onStatus || !total) return;

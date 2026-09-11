@@ -1,4 +1,4 @@
-/* Cut the ceramic. No shadow. Foot blend = original ground at the base. */
+/* Cut the ceramic. Mask from AI. Pixels from the original JPEG. */
 (function loadStudio() {
   const SRC = "https://cdn.jsdelivr.net/gh/moriphoto/studio-stills@62c2cc8b2bcad7c295651534e608064c966eff05/studio.js";
   const xhr = new XMLHttpRequest();
@@ -10,6 +10,21 @@
   (0, eval)(xhr.responseText);
 
   window.paintSit = function paintSit() {};
+
+  window.gradeCut = function gradeCut(canvas, contrast) {
+    contrast = Number(contrast) || 1;
+    if (Math.abs(contrast - 1) < 0.02) return;
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
+    const image = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const d = image.data;
+    for (let i = 0; i < d.length; i += 4) {
+      if (d[i + 3] < 8) continue;
+      d[i] = contrastPx(d[i], contrast);
+      d[i + 1] = contrastPx(d[i + 1], contrast);
+      d[i + 2] = contrastPx(d[i + 2], contrast);
+    }
+    ctx.putImageData(image, 0, 0);
+  };
 
   window.keepFoot = function keepFoot(cutCanvas, origImg, footPct) {
     footPct = Number(footPct);
@@ -53,7 +68,7 @@
     s = s || readSettings();
     hardenMask(cutCanvas, s.mask);
     keepFoot(cutCanvas, origImg, s.foot);
-    gradeCut(cutCanvas, s.contrast || 1.1);
+    gradeCut(cutCanvas, s.contrast || 1);
     const bb = bboxFromAlpha(cutCanvas);
     const maxW = W * 0.78;
     const maxH = H * 0.62;

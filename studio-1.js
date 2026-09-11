@@ -23,19 +23,15 @@ function readSettings() {
   return {
     ai: typeof window.cutWithAI === "function",
     high: outputIsHigh(),
-    mask: Number(document.getElementById("mask") && document.getElementById("mask").value || 68),
-    foot: Number(document.getElementById("foot") && document.getElementById("foot").value || 70),
-    tol: Number(document.getElementById("tol") && document.getElementById("tol").value || 64),
-    contrast: Number(document.getElementById("con") && document.getElementById("con").value || 110) / 100,
+    enhance: Number(document.getElementById("enhance") && document.getElementById("enhance").value || 108) / 100,
+    edge: Number(document.getElementById("edge") && document.getElementById("edge").value || 10),
+    mask: 68,
+    foot: 72,
+    tol: 64,
+    contrast: Number(document.getElementById("enhance") && document.getElementById("enhance").value || 108) / 100,
   };
 }
-function writeSettings(s) {
-  if (!s) return;
-  const mask = document.getElementById("mask"); if (mask) { mask.value = s.mask; const v = document.getElementById("maskv"); if (v) v.textContent = s.mask; }
-  const foot = document.getElementById("foot"); if (foot) { foot.value = s.foot; const v = document.getElementById("footv"); if (v) v.textContent = s.foot; }
-  const tol = document.getElementById("tol"); if (tol) { tol.value = s.tol; const v = document.getElementById("tolv"); if (v) v.textContent = s.tol; }
-  const con = document.getElementById("con"); if (con) { const n = Math.round(s.contrast * 100); con.value = n; const v = document.getElementById("conv"); if (v) v.textContent = (n/100).toFixed(2); }
-}
+function writeSettings(s) {}
 function isStill(f) {
   if (f.type && f.type.startsWith("image/")) return true;
   return /\.(jpe?g|png|webp)$/i.test(f.name);
@@ -82,6 +78,8 @@ function plateRgb(t) {
 }
 function paintPlate(ctx) {
   if (groundEl) {
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = "high";
     ctx.drawImage(groundEl, 0, 0, W, H);
     return;
   }
@@ -97,28 +95,4 @@ function paintPlate(ctx) {
   }
   ctx.putImageData(image, 0, 0);
 }
-function trimBars(img) {
-  const src = document.createElement("canvas");
-  src.width = img.width; src.height = img.height;
-  const ctx = src.getContext("2d", { willReadFrequently: true });
-  ctx.drawImage(img, 0, 0);
-  const data = ctx.getImageData(0, 0, src.width, src.height).data;
-  const w = src.width, h = src.height;
-  const empty = (x, y) => {
-    const p = (y * w + x) * 4;
-    return luma(data[p], data[p+1], data[p+2]) < 14;
-  };
-  const colEmpty = (x) => { let n=0; for (let y=0;y<h;y+=4) if (empty(x,y)) n++; return n > (h/4)*0.92; };
-  const rowEmpty = (y) => { let n=0; for (let x=0;x<w;x+=4) if (empty(x,y)) n++; return n > (w/4)*0.92; };
-  let x0=0,x1=w-1,y0=0,y1=h-1;
-  while (x0<x1 && colEmpty(x0)) x0++;
-  while (x1>x0 && colEmpty(x1)) x1--;
-  while (y0<y1 && rowEmpty(y0)) y0++;
-  while (y1>y0 && rowEmpty(y1)) y1--;
-  const cw=x1-x0+1, ch=y1-y0+1;
-  if (cw<40 || ch<40 || (cw>w*0.97 && ch>h*0.97)) return img;
-  const out = document.createElement("canvas");
-  out.width = cw; out.height = ch;
-  out.getContext("2d").drawImage(src, x0, y0, cw, ch, 0, 0, cw, ch);
-  return out;
-}
+function trimBars(img) { return img; }

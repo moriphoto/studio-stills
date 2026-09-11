@@ -1,13 +1,22 @@
 /* Calibrate the cove from a set photo.
-   Click dark (top of sweep). Click light (floor).
-   Builds a 1920 × 1080 plate and uses it for every still. */
+   Click dark (top). Click light (floor). Use this plate. */
 (function () {
   let srcImg = null;
   let step = 0;
   let dark = null;
   let light = null;
+  let plateCanvas = null;
 
   function $(id) { return document.getElementById(id); }
+
+  function markLive(on) {
+    ["calUse", "calibrate"].forEach(function (id) {
+      const el = $(id);
+      if (!el) return;
+      if (on) el.classList.add("on");
+      else el.classList.remove("on");
+    });
+  }
 
   function sample(img, clientX, clientY, el) {
     const rect = el.getBoundingClientRect();
@@ -17,7 +26,7 @@
     c.width = img.width; c.height = img.height;
     const ctx = c.getContext("2d", { willReadFrequently: true });
     ctx.drawImage(img, 0, 0);
-    const r = 6;
+    const r = 8;
     const x0 = Math.max(0, Math.round(x) - r);
     const y0 = Math.max(0, Math.round(y) - r);
     const x1 = Math.min(img.width, Math.round(x) + r + 1);
@@ -43,39 +52,47 @@
 
   function buildPlate(top, bot) {
     top = liftBlack(top);
+    const PW = 3840, PH = 2160;
     const c = document.createElement("canvas");
-    c.width = 1920;
-    c.height = 1080;
+    c.width = PW; c.height = PH;
     const ctx = c.getContext("2d");
-    const img = ctx.createImageData(1920, 1080);
+    const img = ctx.createImageData(PW, PH);
     const d = img.data;
-    for (let y = 0; y < 1080; y++) {
-      const t = ease(y / 1079);
+    for (let y = 0; y < PH; y++) {
+      const t = ease(y / (PH - 1));
       const r = top.r + (bot.r - top.r) * t;
       const g = top.g + (bot.g - top.g) * t;
       const b = top.b + (bot.b - top.b) * t;
       const rr = r | 0, gg = g | 0, bb = b | 0;
-      for (let x = 0; x < 1920; x++) {
-        const i = (y * 1920 + x) * 4;
+      for (let x = 0; x < PW; x++) {
+        const i = (y * PW + x) * 4;
         d[i] = rr; d[i + 1] = gg; d[i + 2] = bb; d[i + 3] = 255;
       }
     }
     ctx.putImageData(img, 0, 0);
-    return c;
+    const out = document.createElement("canvas");
+    out.width = 1920; out.height = 1080;
+    const octx = out.getContext("2d");
+    octx.imageSmoothingEnabled = true;
+    octx.imageSmoothingQuality = "high";
+    octx.drawImage(c, 0, 0, 1920, 1080);
+    return out;
   }
 
   function applyPlate(canvas) {
+    plateCanvas = canvas;
     const img = new Image();
     img.onload = function () {
       groundEl = img;
-      const mid = canvas.getContext("2d").getImageData(960, 700, 1, 1).data;
+      window.coveFloor = light && light.y ? Math.min(0.94, Math.max(0.78, light.y + 0.04)) : 0.9;
+      const midY = Math.round(1080 * 0.72);
+      const mid = canvas.getContext("2d").getImageData(960, midY, 1, 1).data;
       tone = { l: luma(mid[0], mid[1], mid[2]), r: mid[0], g: mid[1], b: mid[2] };
-      try {
-        localStorage.setItem("cove-plate", canvas.toDataURL("image/jpeg", 0.92));
-      } catch (e) {}
-      status("Plate calibrated. Process the set on this cove.");
+      try { localStorage.setItem("cove-plate", canvas.toDataURL("image/jpeg", 0.95)); } catch (e) {}
+      markLive(true);
+      status("Plate live. Process the set.");
     };
-    img.src = canvas.toDataURL("image/jpeg", 0.92);
+    img.src = canvas.toDataURL("image/jpeg", 0.95);
     $("calPrev").src = img.src;
     $("calPrevWrap").hidden = false;
   }
@@ -85,7 +102,7 @@
       const data = localStorage.getItem("cove-plate");
       if (!data) return;
       const img = new Image();
-      img.onload = function () { groundEl = img; };
+      img.onload = function () { groundEl = img; markLive(true); };
       img.src = data;
     } catch (e) {}
   }
@@ -102,8 +119,7 @@
 
   function onPick(e) {
     if (!srcImg || !srcImg.width) return;
-    const el = $("calSrc");
-    const sw = sample(srcImg, e.clientX, e.clientY, el);
+    const sw = sample(srcImg, e.clientX, e.clientY, $("calSrc"));
     if (step === 0) {
       dark = sw;
       step = 1;
@@ -112,11 +128,9 @@
     }
     light = sw;
     step = 2;
-    const plate = buildPlate(dark, light);
-    applyPlate(plate);
+    applyPlate(buildPlate(dark, light));
   }
 
-  document.addEventListener("DOMContentLoaded", restorePlate);
   restorePlate();
 
   const btn = $("calibrate");
@@ -125,18 +139,26 @@
   if (srcEl) srcEl.onclick = onPick;
   const useBtn = $("calUse");
   if (useBtn) useBtn.onclick = function () {
-    if (step < 2) { status("Pick dark, then light."); return; }
-    status("Plate in use. Process all.");
+    if (plateCanvas) {
+      applyPlate(plateCanvas);
+      return;
+    }
+    if (step >= 2 && dark && light) {
+      applyPlate(buildPlate(dark, light));
+      return;
+    }
+    status("Pick dark, then light, then Use this plate.");
   };
   const dlBtn = $("calDl");
   if (dlBtn) dlBtn.onclick = function () {
     if (!groundEl) { status("Calibrate first."); return; }
     const c = document.createElement("canvas");
     c.width = 1920; c.height = 1080;
-    c.getContext("2d").drawImage(groundEl, 0, 0, 1920, 1080);
-    c.toBlob(function (b) {
-      if (b) download(b, "studio-ground.jpg");
-    }, "image/jpeg", 0.92);
+    const ctx = c.getContext("2d");
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = "high";
+    ctx.drawImage(groundEl, 0, 0, 1920, 1080);
+    c.toBlob(function (b) { if (b) download(b, "studio-ground.jpg"); }, "image/jpeg", 0.95);
   };
   const closeBtn = $("calClose");
   if (closeBtn) closeBtn.onclick = function () { $("cal").hidden = true; };

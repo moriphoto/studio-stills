@@ -9,8 +9,7 @@ function render() {
   grid.innerHTML = "";
   items.forEach((item) => {
     const el = document.createElement("article");
-    el.innerHTML = `<img src="${item.processedUrl||item.url}" alt=""><div class="m"><span>${item.name}</span><label><input type="checkbox" ${item.selected?"checked":""}> in group</label></div>`;
-    el.querySelector("input").onchange = e => { item.selected = e.target.checked; };
+    el.innerHTML = `<img src="${item.processedUrl||item.url}" alt=""><div class="m"><span>${item.name}</span></div>`;
     grid.appendChild(el);
   });
 }
@@ -59,7 +58,7 @@ document.getElementById("run").onclick = async () => {
     await assetsReady;
     for (let i=0;i<items.length;i++){
       const s = items[i].settings || bar;
-      status("Processing " + (i+1) + " of " + items.length + "…");
+      status("Cutting " + (i+1) + " of " + items.length + "…");
       await new Promise(r => setTimeout(r, 20));
       try {
         items[i].cut = await cutFromFile(items[i].file, s, status);
@@ -82,7 +81,7 @@ document.getElementById("run").onclick = async () => {
       }
     }
     const ok = items.filter(x => x.framed).length;
-    status(ok ? ("Done — " + ok + " file(s) at 1920 × 1080.") : "Nothing processed. If AI is ticked, wait for the model or untick AI cut.");
+    status(ok ? ("Done — " + ok + " file(s) at 1920 × 1080.") : "Cut failed. Use the original JPEG.");
   } catch (err) {
     status("Process failed: " + (err && err.message ? err.message : "open Chrome console"));
   }
@@ -93,12 +92,10 @@ function resetStudio() {
   groupUrl = null;
   document.getElementById("grid").innerHTML = "";
   document.getElementById("heroWrap").hidden = true;
-  document.getElementById("group").hidden = true;
+  const g = document.getElementById("group"); if (g) g.hidden = true;
   document.getElementById("files").value = "";
   const hero = document.getElementById("hero");
   if (hero) hero.removeAttribute("src");
-  const gi = document.getElementById("groupImg");
-  if (gi) gi.removeAttribute("src");
   const mask = document.getElementById("mask"); if (mask) { mask.value = 68; document.getElementById("maskv").textContent = "68"; }
   const foot = document.getElementById("foot"); if (foot) { foot.value = 58; document.getElementById("footv").textContent = "58"; }
   const tol = document.getElementById("tol"); if (tol) { tol.value = 64; document.getElementById("tolv").textContent = "64"; }
@@ -128,19 +125,4 @@ document.getElementById("dl").onclick = async () => {
     await new Promise(r => setTimeout(r, 250));
   }
   if (!n) status("Process first, then download.");
-};
-document.getElementById("groupBtn").onclick = async () => {
-  const chosen = items.filter(i => i.selected && i.cut);
-  if (!chosen.length) { status("Process first."); return; }
-  if (!assetsReady) assetsReady = loadAssets();
-  await assetsReady;
-  const blob = await toBlob(composeCollection(chosen.map(i => i.cut)));
-  groupUrl = URL.createObjectURL(blob);
-  document.getElementById("group").hidden = false;
-  document.getElementById("groupImg").src = groupUrl;
-  status("");
-};
-document.getElementById("dlGroup").onclick = async () => {
-  if (!groupUrl) return;
-  download(await fetch(groupUrl).then(r => r.blob()), "collection-1920.jpg");
 };

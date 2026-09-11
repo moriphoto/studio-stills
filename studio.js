@@ -285,36 +285,6 @@ function hardenMask(canvas) {
   const ctx = canvas.getContext("2d", { willReadFrequently: true });
   const image = ctx.getImageData(0, 0, canvas.width, canvas.height);
   const d = image.data, w = canvas.width, h = canvas.height;
-  const a = new Uint8ClampedArray(w * h);
-  for (let i = 0; i < w * h; i++) {
-    const v = d[i * 4 + 3];
-    a[i] = v < 110 ? 0 : v < 220 ? Math.round((v - 110) * 255 / 110) : 255;
-  }
-  for (let pass = 0; pass < 2; pass++) {
-    const copy = a.slice();
-    for (let y = 1; y < h - 1; y++) {
-      for (let x = 1; x < w - 1; x++) {
-        const i = y * w + x;
-        a[i] = Math.min(copy[i], copy[i - 1], copy[i + 1], copy[i - w], copy[i + w]);
-      }
-    }
-  }
-  const copy = a.slice();
-  for (let y = 1; y < h - 1; y++) {
-    for (let x = 1; x < w - 1; x++) {
-      const i = y * w + x;
-      if (copy[i] === 255 || copy[i] === 0) continue;
-      a[i] = (copy[i] + copy[i - 1] + copy[i + 1] + copy[i - w] + copy[i + w]) / 5;
-    }
-  }
-  for (let i = 0; i < w * h; i++) d[i * 4 + 3] = a[i];
-  ctx.putImageData(image, 0, 0);
-}
-
-function hardenMask(canvas) {
-  const ctx = canvas.getContext("2d", { willReadFrequently: true });
-  const image = ctx.getImageData(0, 0, canvas.width, canvas.height);
-  const d = image.data, w = canvas.width, h = canvas.height;
   const strength = Number(document.getElementById("mask") && document.getElementById("mask").value || 72);
   const lo = 50 + strength * 0.9;
   const span = 90;
@@ -323,7 +293,6 @@ function hardenMask(canvas) {
     const v = d[i * 4 + 3];
     a[i] = v < lo ? 0 : v < lo + span ? Math.round((v - lo) * 255 / span) : 255;
   }
-  const bbGuess = { y: 0, h: h };
   let minY = h, maxY = 0;
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
     if (a[y * w + x] > 18) { if (y < minY) minY = y; if (y > maxY) maxY = y; }
@@ -351,11 +320,11 @@ function hardenMask(canvas) {
   ctx.putImageData(image, 0, 0);
 }
 
-function matchSize(src, w, h) {
-  if (src.width === w && src.height === h) return src;
+function toCanvas(src, w, h) {
   const c = document.createElement("canvas");
-  c.width = w; c.height = h;
-  c.getContext("2d").drawImage(src, 0, 0, w, h);
+  c.width = w || src.width;
+  c.height = h || src.height;
+  c.getContext("2d").drawImage(src, 0, 0, c.width, c.height);
   return c;
 }
 
@@ -363,7 +332,7 @@ function keepFoot(cutCanvas, origImg, footPct) {
   footPct = Number(footPct);
   if (!origImg || footPct < 2) return;
   const w = cutCanvas.width, h = cutCanvas.height;
-  const orig = matchSize(origImg, w, h);
+  const orig = toCanvas(origImg, w, h);
   const ctx = cutCanvas.getContext("2d", { willReadFrequently: true });
   const cut = ctx.getImageData(0, 0, w, h);
   const od = orig.getContext("2d", { willReadFrequently: true }).getImageData(0, 0, w, h).data;
@@ -450,14 +419,35 @@ async function cutFromFile(file, t, c, onStatus) {
   if (wantAI && typeof window.cutWithAI === "function") {
     try {
       onStatus("AI cutting… first time downloads a model (~50MB).");
-      let rgba = await window.cutWithAI(file, onStatus);
-      rgba = matchSize(rgba, orig.width, orig.height);
-      return placeOnPlate(rgba, c, orig);
+      let rgba = await Promise.race([
+        window.cutWithAI(file, onStatus),
+        new Promise((_, rej) => setTimeout(() => rej(new Error("AI timed out")), 120000)),
+      ]);
+      rgba = toCanvas(rgba, orig.width, orig.height);
+      return forceFrame(placeOnPlate(rgba, c, orig));
     } catch (err) {
       onStatus("AI skipped: " + (err && err.message ? err.message : "using paper match"));
     }
   }
-  return frameStill(orig, t, c);
+  return forceFrame(frameStill(orig, t, c));
+}
+
+function forceFrame(cut) {
+  const src = cut && cut.canvas;
+  if (src && src.width === W && src.height === H) {
+    cut.width = W; cut.height = H;
+    return cut;
+  }
+  const out = document.createElement("canvas");
+  out.width = W; out.height = H;
+  const ctx = out.getContext("2d");
+  paintPlate(ctx);
+  if (src && src.width && src.height) {
+    const s = Math.min(W / src.width, H / src.height);
+    const dw = src.width * s, dh = src.height * s;
+    ctx.drawImage(src, (W - dw) / 2, (H - dh) / 2, dw, dh);
+  }
+  return { canvas: out, photo: cut && cut.photo || out, bbox: { x: 0, y: 0, w: W, h: H }, meanLuma: tone.l, width: W, height: H };
 }
 
 function frameStill(img, tolerance, contrast) {
@@ -466,7 +456,7 @@ function frameStill(img, tolerance, contrast) {
   const cut = cutPot(img, tolerance);
   keepFoot(cut.canvas, img, document.getElementById("foot") && document.getElementById("foot").value);
   gradeCut(cut.canvas, contrast);
-  const bb = cut.bbox;
+  const bb = bboxFromAlpha(cut.canvas);
   const maxW = W * 0.78;
   const maxH = H * 0.62;
   const scale = Math.min(maxW / Math.max(1, bb.w), maxH / Math.max(1, bb.h));
@@ -572,16 +562,26 @@ document.getElementById("run").onclick = async () => {
   if (!items.length) { status("Add original JPEGs first, then Process all."); return; }
   const t = Number(document.getElementById("tol").value);
   const c = Number(document.getElementById("con").value) / 100;
+  const btn = document.getElementById("run");
+  btn.disabled = true;
   try {
     if (!assetsReady) assetsReady = loadAssets();
     await assetsReady;
     for (let i=0;i<items.length;i++){
       status("Processing " + (i+1) + " of " + items.length + "…");
       await new Promise(r => setTimeout(r, 20));
-      const imgWait = items[i];
-      imgWait.cut = await cutFromFile(items[i].file, t, c, status);
-      items[i].framed = items[i].cut.canvas;
-      items[i].processedUrl = URL.createObjectURL(await toBlob(items[i].framed));
+      try {
+        items[i].cut = await cutFromFile(items[i].file, t, c, status);
+        items[i].framed = items[i].cut.canvas;
+        if (items[i].framed.width !== W || items[i].framed.height !== H) {
+          items[i].cut = forceFrame(items[i].cut);
+          items[i].framed = items[i].cut.canvas;
+        }
+        items[i].processedUrl = URL.createObjectURL(await toBlob(items[i].framed));
+      } catch (one) {
+        status("Skipped " + items[i].name + ": " + (one && one.message ? one.message : "error"));
+        continue;
+      }
       render();
       const hero = document.getElementById("hero");
       const wrap = document.getElementById("heroWrap");
@@ -590,11 +590,31 @@ document.getElementById("run").onclick = async () => {
         hero.src = items[i].processedUrl;
       }
     }
-    status("Done — each file is 1920 × 1080.");
+    const ok = items.filter(x => x.framed).length;
+    status(ok ? ("Done — " + ok + " file(s) at 1920 × 1080.") : "Nothing processed. Try unticking AI cut.");
   } catch (err) {
     status("Process failed: " + (err && err.message ? err.message : "open Chrome console"));
   }
+  btn.disabled = false;
 };
+function resetStudio() {
+  items.splice(0, items.length);
+  groupUrl = null;
+  document.getElementById("grid").innerHTML = "";
+  document.getElementById("heroWrap").hidden = true;
+  document.getElementById("group").hidden = true;
+  document.getElementById("files").value = "";
+  const hero = document.getElementById("hero");
+  if (hero) hero.removeAttribute("src");
+  const gi = document.getElementById("groupImg");
+  if (gi) gi.removeAttribute("src");
+  const mask = document.getElementById("mask"); if (mask) { mask.value = 72; document.getElementById("maskv").textContent = "72"; }
+  const foot = document.getElementById("foot"); if (foot) { foot.value = 42; document.getElementById("footv").textContent = "42"; }
+  const tol = document.getElementById("tol"); if (tol) { tol.value = 64; document.getElementById("tolv").textContent = "64"; }
+  const con = document.getElementById("con"); if (con) { con.value = 110; document.getElementById("conv").textContent = "1.10"; }
+  status("Reset.");
+}
+document.getElementById("reset").onclick = resetStudio;
 document.getElementById("dl").onclick = async () => {
   let n = 0;
   for (const item of items) {

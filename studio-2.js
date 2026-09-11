@@ -17,9 +17,9 @@ function hardenMask(canvas, strength) {
   const ctx = canvas.getContext("2d", { willReadFrequently: true });
   const image = ctx.getImageData(0, 0, canvas.width, canvas.height);
   const d = image.data, w = canvas.width, h = canvas.height;
-  strength = strength == null ? 68 : strength;
+  strength = strength == null ? 72 : strength;
   const lo = 50 + strength * 0.9;
-  const span = 90;
+  const span = 80;
   const a = new Uint8ClampedArray(w * h);
   for (let i = 0; i < w * h; i++) {
     const v = d[i * 4 + 3];
@@ -29,7 +29,7 @@ function hardenMask(canvas, strength) {
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
     if (a[y * w + x] > 18) { if (y < minY) minY = y; if (y > maxY) maxY = y; }
   }
-  const footLine = minY + (maxY - minY) * 0.72;
+  const footLine = minY + (maxY - minY) * 0.78;
   for (let pass = 0; pass < 2; pass++) {
     const copy = a.slice();
     for (let y = 1; y < h - 1; y++) {
@@ -40,15 +40,50 @@ function hardenMask(canvas, strength) {
       }
     }
   }
-  const copy = a.slice();
-  for (let y = 1; y < h - 1; y++) {
-    for (let x = 1; x < w - 1; x++) {
-      const i = y * w + x;
-      if (copy[i] === 255 || copy[i] === 0) continue;
-      a[i] = (copy[i] + copy[i - 1] + copy[i + 1] + copy[i - w] + copy[i + w]) / 5;
+  for (let i = 0; i < w * h; i++) d[i * 4 + 3] = a[i];
+  ctx.putImageData(image, 0, 0);
+}
+
+function dropIslands(canvas) {
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
+  const w = canvas.width, h = canvas.height;
+  const image = ctx.getImageData(0, 0, w, h);
+  const d = image.data;
+  const lab = new Int32Array(w * h);
+  const sizes = [0];
+  let id = 0;
+  const qx = new Int32Array(w * h);
+  const qy = new Int32Array(w * h);
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const p = y * w + x;
+      if (lab[p] || d[p * 4 + 3] < 24) continue;
+      id++;
+      let n = 0, qi = 0, qj = 0;
+      qx[qj] = x; qy[qj] = y; qj++;
+      lab[p] = id;
+      while (qi < qj) {
+        const cx = qx[qi], cy = qy[qi]; qi++; n++;
+        const nbs = [[cx-1,cy],[cx+1,cy],[cx,cy-1],[cx,cy+1]];
+        for (let k = 0; k < 4; k++) {
+          const nx = nbs[k][0], ny = nbs[k][1];
+          if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+          const np = ny * w + nx;
+          if (lab[np] || d[np * 4 + 3] < 24) continue;
+          lab[np] = id;
+          qx[qj] = nx; qy[qj] = ny; qj++;
+        }
+      }
+      sizes[id] = n;
     }
   }
-  for (let i = 0; i < w * h; i++) d[i * 4 + 3] = a[i];
+  let best = 1, bestN = 0;
+  for (let i = 1; i < sizes.length; i++) if (sizes[i] > bestN) { bestN = sizes[i]; best = i; }
+  const minKeep = Math.max(80, bestN * 0.015);
+  for (let i = 0; i < w * h; i++) {
+    if (!lab[i]) continue;
+    if (lab[i] !== best && sizes[lab[i]] < minKeep) d[i * 4 + 3] = 0;
+  }
   ctx.putImageData(image, 0, 0);
 }
 
@@ -61,7 +96,7 @@ function featherEdge(canvas, radius) {
   const d = image.data;
   let a = new Float32Array(w * h);
   for (let i = 0; i < w * h; i++) a[i] = d[i * 4 + 3];
-  const passes = Math.min(8, radius);
+  const passes = Math.min(6, radius);
   for (let p = 0; p < passes; p++) {
     const n = new Float32Array(a);
     for (let y = 1; y < h - 1; y++) {
@@ -85,9 +120,8 @@ function toCanvas(src, w, h) {
   return c;
 }
 
-function keepFoot(cutCanvas, origImg, footPct) {
-  footPct = footPct == null ? 72 : Number(footPct);
-  if (!origImg || footPct < 2) return;
+function keepShadow(cutCanvas, origImg) {
+  if (!origImg) return;
   const w = cutCanvas.width, h = cutCanvas.height;
   const orig = toCanvas(origImg, w, h);
   const ctx = cutCanvas.getContext("2d", { willReadFrequently: true });
@@ -95,48 +129,34 @@ function keepFoot(cutCanvas, origImg, footPct) {
   const od = orig.getContext("2d", { willReadFrequently: true }).getImageData(0, 0, w, h).data;
   const d = cut.data;
   const bb = bboxFromAlpha(cutCanvas);
-  const R = Math.max(14, Math.round(bb.w * 0.08));
-  const yFoot0 = Math.floor(bb.y + bb.h * 0.58);
-  const near = new Uint8Array(w * h);
-  for (let y = yFoot0; y < bb.y + bb.h && y < h; y++) {
-    for (let x = bb.x; x < bb.x + bb.w && x < w; x++) {
-      if (d[(y * w + x) * 4 + 3] < 200) continue;
-      const x0 = Math.max(0, x - R), x1 = Math.min(w - 1, x + R);
-      const y0 = Math.max(0, y - Math.round(R * 0.3));
-      const y1 = Math.min(h - 1, y + Math.round(R * 1.2));
-      for (let yy = y0; yy <= y1; yy++) {
-        for (let xx = x0; xx <= x1; xx++) {
-          const dx = xx - x, dy = yy - y;
-          if (dx * dx + dy * dy * 1.35 <= R * R) near[yy * w + xx] = 1;
-        }
-      }
-    }
-  }
-  const y0 = Math.floor(bb.y + bb.h * 0.66);
-  const y1 = Math.min(h - 1, Math.ceil(bb.y + bb.h + R));
+  const R = Math.max(10, Math.round(bb.w * 0.06));
+  const y0 = Math.floor(bb.y + bb.h * 0.78);
+  const y1 = Math.min(h - 1, Math.ceil(bb.y + bb.h + R * 0.7));
   for (let y = y0; y <= y1; y++) {
-    const fade = Math.pow(1 - (y - y0) / Math.max(1, y1 - y0), 0.65);
+    const fade = 1 - (y - y0) / Math.max(1, y1 - y0);
+    let paper = 0, pn = 0;
+    for (let x = 0; x < Math.min(w, 12); x++) {
+      const i = (y * w + x) * 4;
+      paper += luma(od[i], od[i + 1], od[i + 2]); pn++;
+    }
+    for (let x = Math.max(0, w - 12); x < w; x++) {
+      const i = (y * w + x) * 4;
+      paper += luma(od[i], od[i + 1], od[i + 2]); pn++;
+    }
+    paper = paper / Math.max(1, pn);
     for (let x = Math.max(0, bb.x - R); x <= Math.min(w - 1, bb.x + bb.w + R); x++) {
       const i = (y * w + x) * 4;
-      if (d[i + 3] > 248) continue;
-      if (!near[y * w + x]) continue;
+      if (d[i + 3] > 240) continue;
       const oL = luma(od[i], od[i + 1], od[i + 2]);
-      const shadow = oL < 170 ? 1.35 : 0.5;
-      const keep = fade * shadow;
-      if (keep < 0.04) continue;
-      const oa = Math.round(Math.min(220, keep * 210));
+      if (oL > 145) continue;
+      if (oL > paper - 28) continue;
+      const dx = (x - (bb.x + bb.w / 2)) / Math.max(1, bb.w / 2 + R);
+      if (dx * dx > 1.05) continue;
+      const oa = Math.round(Math.min(160, fade * (150 - oL) * 1.4));
+      if (oa < 18) continue;
       if (oa <= d[i + 3]) continue;
       d[i] = od[i]; d[i + 1] = od[i + 1]; d[i + 2] = od[i + 2];
-      d[i + 3] = Math.max(d[i + 3], oa);
-    }
-  }
-  const copy = new Uint8ClampedArray(w * h);
-  for (let i = 0; i < w * h; i++) copy[i] = d[i * 4 + 3];
-  for (let y = y0; y <= y1; y++) {
-    for (let x = 1; x < w - 1; x++) {
-      const i = y * w + x;
-      if (copy[i] > 240) continue;
-      d[i * 4 + 3] = (copy[i] + copy[i - 1] + copy[i + 1] + copy[i - w] + copy[Math.min(w * h - 1, i + w)]) / 5;
+      d[i + 3] = oa;
     }
   }
   ctx.putImageData(cut, 0, 0);
@@ -165,23 +185,11 @@ function fitContain(sw, sh, boxW, boxH) {
   return { s: s, dw: dw, dh: dh, dx: (boxW - dw) / 2, dy: (boxH - dh) / 2 };
 }
 
-function paintExtendedCove(ctx, img) {
-  const plate = (typeof window.extendFromImage === "function")
-    ? window.extendFromImage(img)
-    : null;
-  if (plate) {
-    ctx.imageSmoothingEnabled = true;
-    ctx.imageSmoothingQuality = "high";
-    ctx.drawImage(plate, 0, 0, W, H);
-    return;
-  }
-  paintPlate(ctx);
-}
-
 function composeIntact(cutCanvas, origImg) {
   const s = readSettings();
-  hardenMask(cutCanvas, 68);
-  keepFoot(cutCanvas, origImg, 72);
+  hardenMask(cutCanvas, 72);
+  dropIslands(cutCanvas);
+  keepShadow(cutCanvas, origImg);
   featherEdge(cutCanvas, s.edge);
   gradeCut(cutCanvas, s.enhance);
   const fit = fitContain(origImg.width, origImg.height, W, H);
@@ -190,23 +198,18 @@ function composeIntact(cutCanvas, origImg) {
   const ctx = out.getContext("2d");
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = "high";
-  paintExtendedCove(ctx, origImg);
+  paintPlate(ctx);
   ctx.drawImage(cutCanvas, 0, 0, cutCanvas.width, cutCanvas.height, fit.dx, fit.dy, fit.dw, fit.dh);
   return { canvas: out, photo: cutCanvas, bbox: { x: fit.dx, y: fit.dy, w: fit.dw, h: fit.dh }, meanLuma: tone.l, width: W, height: H };
 }
 
-function sitOnPlate(cutCanvas, origImg, s) {
-  return composeIntact(cutCanvas, origImg);
-}
-function placeOnPlate(cutCanvas, contrast, origImg, s) {
-  return composeIntact(cutCanvas, origImg);
-}
+function sitOnPlate(cutCanvas, origImg, s) { return composeIntact(cutCanvas, origImg); }
+function placeOnPlate(cutCanvas, contrast, origImg, s) { return composeIntact(cutCanvas, origImg); }
 
 async function cutFromFile(file, s, onStatus) {
   s = s || readSettings();
   const orig = await loadImage(file);
   setOutputSize(orig);
-  window.autoCove = true;
   if (typeof window.cutWithAI === "function") {
     try {
       if (onStatus) onStatus("Cutting…");
@@ -242,7 +245,6 @@ function forceFrame(cut) {
 
 function frameStill(img, s) {
   setOutputSize(img);
-  window.autoCove = true;
   const cut = cutPot(img, 64, 68);
   return composeIntact(cut.canvas, img);
 }

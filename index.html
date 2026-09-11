@@ -39,7 +39,7 @@
   <header>
     <p class="k">John Mackenzie Ceramics</p>
     <h1>Studio stills</h1>
-    <p class="lead">The JPEG stays intact and centred. Cove extends left and right to 1920 × 1080. Cut keeps the object and its shadow, then blends.</p>
+    <p class="lead">JPEG stays at scale. Sides extend from the real cove. Cut keeps object and shadow. Blend edge and enhance tidy the sit.</p>
   </header>
   <div class="bar">
     <label class="btn" for="files">Add JPEGs</label>
@@ -48,6 +48,8 @@
     <button class="ghost" id="calibrate">Calibrate</button>
     <label class="t"><input type="radio" name="res" id="resWeb" checked> Web 1920</label>
     <label class="t"><input type="radio" name="res" id="resHigh"> High (upload)</label>
+    <label class="t">Enhance <input id="enhance" type="range" min="100" max="130" value="108"> <span id="enhancev">1.08</span></label>
+    <label class="t">Blend edge <input id="edge" type="range" min="0" max="20" value="10"> <span id="edgev">10</span></label>
     <button class="ghost" id="run">Process all</button>
     <button class="ghost" id="reset">Reset</button>
     <button class="ghost" id="dl">Download singles</button>

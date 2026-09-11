@@ -11,7 +11,7 @@
     header { padding:32px 32px 20px; border-bottom:1px solid rgba(255,255,255,.1); }
     header p.k { font-size:10px; font-weight:700; letter-spacing:.22em; text-transform:uppercase; color:var(--rust); }
     h1 { font-size:32px; margin-top:8px; }
-    .lead { color:var(--mute); font-size:14px; max-width:52ch; margin-top:8px; line-height:1.5; }
+    .lead { color:var(--mute); font-size:14px; max-width:58ch; margin-top:8px; line-height:1.5; }
     .bar { display:flex; flex-wrap:wrap; gap:12px; align-items:center; padding:16px 32px; border-bottom:1px solid rgba(255,255,255,.1); }
     button { font:inherit; cursor:pointer; }
     .btn { background:#fff; color:#000; border:0; padding:12px 18px; font-size:11px; font-weight:700; letter-spacing:.16em; text-transform:uppercase; }
@@ -33,19 +33,20 @@
   <header>
     <p class="k">John Mackenzie Ceramics</p>
     <h1>Studio stills</h1>
-    <p class="lead">Any JPEG. Cut the ceramic and its shadow. Sit it on the 1920×1080 cove. Glaze stays as shot. This page is GitHub Pages — no Netlify credits.</p>
+    <p class="lead">Any JPEG. AI cuts the ceramic in your browser (first run downloads a model, then it stays on this computer). No Gemini key. No Netlify. Glaze stays as shot. Output is always 1920×1080.</p>
   </header>
   <div class="bar">
     <label class="btn" for="files">Add JPEGs</label>
     <input id="files" type="file" accept="image/jpeg,image/png,.jpg,.jpeg,.png,.webp" multiple>
-    <label class="t">Ground match <input id="tol" type="range" min="20" max="80" value="50"> <span id="tolv">50</span></label>
+    <label class="t"><input id="ai" type="checkbox" checked> AI cut</label>
+    <label class="t">Paper match <input id="tol" type="range" min="20" max="80" value="50"> <span id="tolv">50</span></label>
     <label class="t">Contrast <input id="con" type="range" min="100" max="130" value="110"> <span id="conv">1.10</span></label>
     <button class="ghost" id="run">Process all</button>
     <button class="ghost" id="dl">Download singles</button>
     <button class="gold" id="groupBtn">Group shot</button>
     <span id="status"></span>
   </div>
-  <div class="drop" id="drop">Click or drop original JPEGs. Output is always 1920 × 1080.</div>
+  <div class="drop" id="drop">Click or drop original JPEGs. First AI cut takes a minute. After that it is quick.</div>
   <section id="heroWrap" hidden>
     <p class="k" style="padding:0 32px 8px">1920 × 1080 output</p>
     <img id="hero" alt="1920 by 1080" style="width:100%;display:block;border-top:1px solid rgba(255,255,255,.1);border-bottom:1px solid rgba(255,255,255,.1)">
@@ -58,5 +59,6 @@
   </section>
   <script src="studio.js"></script>
   <script src="admin-bridge.js"></script>
+  <script type="module" src="ai-cut.js"></script>
 </body>
 </html>

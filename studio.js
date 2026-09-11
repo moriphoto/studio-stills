@@ -1,5 +1,5 @@
 /* JM Studio — cut ceramic, sit on 1920x1080 cove */
-const W = 1920, H = 1080, FEATHER = 10;
+const W = 1920, H = 1080, FEATHER = 18;
 const items = [];
 let groupUrl = null;
 let groundEl = null;
@@ -93,6 +93,19 @@ function trimBars(img) {
   return out;
 }
 
+function blurAlpha(alpha, w, h, passes) {
+  for (let p = 0; p < passes; p++) {
+    const copy = alpha.slice();
+    for (let y = 1; y < h - 1; y++) {
+      for (let x = 1; x < w - 1; x++) {
+        const i = y * w + x;
+        if (copy[i] === 255) continue;
+        alpha[i] = (copy[i] + copy[i - 1] + copy[i + 1] + copy[i - w] + copy[i + w]) / 5;
+      }
+    }
+  }
+}
+
 function cutPot(img, tol) {
   img = trimBars(img);
   let scale = 820 / img.height;
@@ -152,15 +165,35 @@ function cutPot(img, tol) {
     minX = Math.floor(w * 0.12); minY = Math.floor(h * 0.12);
     maxX = Math.floor(w * 0.88); maxY = Math.floor(h * 0.88);
   }
-  const alpha = new Uint8ClampedArray(w*h);
-  for (let y=0;y<h;y++) for (let x=0;x<w;x++) {
-    const i = y*w+x;
+  const footY = minY + (maxY - minY) * 0.62;
+  const alpha = new Uint8ClampedArray(w * h);
+  const apron = 88;
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const i = y * w + x;
     if (!ground[i]) { alpha[i] = 255; continue; }
     const cx = clamp(x, minX, maxX), cy = clamp(y, minY, maxY);
-    const distPx = Math.hypot(x-cx, y-cy);
-    alpha[i] = distPx <= FEATHER ? Math.round(255 * (1 - distPx/FEATHER)) : 0;
+    const distPx = Math.hypot(x - cx, y - cy);
+    if (distPx <= FEATHER) {
+      alpha[i] = Math.round(255 * (1 - distPx / FEATHER));
+      continue;
+    }
+    if (y >= footY && distPx < apron) {
+      const p = i * 4;
+      const L = luma(d[p], d[p + 1], d[p + 2]);
+      const t = y / Math.max(1, h - 1);
+      const pr = top[0] + (bot[0] - top[0]) * t;
+      const pg = top[1] + (bot[1] - top[1]) * t;
+      const pb = top[2] + (bot[2] - top[2]) * t;
+      if (L < luma(pr, pg, pb) - 10) {
+        const fade = 1 - (distPx - FEATHER) / (apron - FEATHER);
+        alpha[i] = Math.round(200 * fade * fade);
+        continue;
+      }
+    }
+    alpha[i] = 0;
   }
-  for (let i=0;i<w*h;i++) d[i*4+3] = alpha[i];
+  blurAlpha(alpha, w, h, 3);
+  for (let i = 0; i < w * h; i++) d[i * 4 + 3] = alpha[i];
   ctx.putImageData(image, 0, 0);
   return { canvas: c, bbox: { x:minX, y:minY, w:maxX-minX+1, h:maxY-minY+1 } };
 }
@@ -208,8 +241,8 @@ function frameStill(img, tolerance, contrast) {
   const ctx = out.getContext("2d");
   paintPlate(ctx);
   ctx.save();
-  ctx.filter = "blur(18px)";
-  ctx.fillStyle = "rgba(0,0,0,0.22)";
+  ctx.filter = "blur(22px)";
+  ctx.fillStyle = "rgba(0,0,0,0.18)";
   ctx.beginPath();
   ctx.ellipse(dx + dw * 0.52, dy + dh - 4, dw * 0.4, Math.max(12, dh * 0.055), 0, 0, Math.PI * 2);
   ctx.fill();

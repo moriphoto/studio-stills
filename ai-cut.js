@@ -1,5 +1,5 @@
-/* Browser cut. RMBG / ISNet supply a mask. The ceramic pixels
-   always come from the original JPEG — never from the model RGB. */
+/* AI cut: load the model as soon as the page opens.
+   Model returns a mask. Pixels stay the original JPEG. */
 import {
   AutoModel,
   AutoProcessor,
@@ -11,10 +11,12 @@ env.allowLocalModels = false;
 env.useBrowserCache = true;
 
 let pack = null;
+window.AI_READY = false;
+window.AI_ERROR = null;
 
 async function loadRmbg(onStatus) {
   if (pack) return pack;
-  if (onStatus) onStatus("Loading RMBG cut model (once, ~50MB)…");
+  if (onStatus) onStatus("Loading AI cut model…");
   const model = await AutoModel.from_pretrained("briaai/RMBG-1.4", {
     config: { model_type: "custom" },
   });
@@ -47,57 +49,23 @@ function canvasFromFile(file) {
   });
 }
 
-function applyMaskToOriginal(origCanvas, maskCanvasOrData, mw, mh) {
-  const w = origCanvas.width, h = origCanvas.height;
-  const ctx = origCanvas.getContext("2d", { willReadFrequently: true });
+function stampAlpha(orig, maskCanvas) {
+  const w = orig.width, h = orig.height;
+  const tmp = document.createElement("canvas");
+  tmp.width = w;
+  tmp.height = h;
+  tmp.getContext("2d").drawImage(maskCanvas, 0, 0, w, h);
+  const a = tmp.getContext("2d", { willReadFrequently: true }).getImageData(0, 0, w, h).data;
+  const ctx = orig.getContext("2d", { willReadFrequently: true });
   const img = ctx.getImageData(0, 0, w, h);
-  const d = img.data;
-  let alpha;
-  if (maskCanvasOrData instanceof HTMLCanvasElement) {
-    const mctx = maskCanvasOrData.getContext("2d", { willReadFrequently: true });
-    if (maskCanvasOrData.width !== w || maskCanvasOrData.height !== h) {
-      const tmp = document.createElement("canvas");
-      tmp.width = w; tmp.height = h;
-      tmp.getContext("2d").drawImage(maskCanvasOrData, 0, 0, w, h);
-      alpha = tmp.getContext("2d").getImageData(0, 0, w, h).data;
-    } else {
-      alpha = mctx.getImageData(0, 0, w, h).data;
-    }
-    for (let i = 0; i < w * h; i++) d[i * 4 + 3] = alpha[i * 4 + 3];
-  } else {
-    const src = maskCanvasOrData;
-    const ch = src.length === w * h ? 1 : src.length === w * h * 4 ? 4 : (src.length / (mw * mh)) | 0 || 1;
-    if (mw === w && mh === h && ch === 1) {
-      for (let i = 0; i < w * h; i++) d[i * 4 + 3] = src[i];
-    } else if (mw === w && mh === h && ch === 4) {
-      for (let i = 0; i < w * h; i++) d[i * 4 + 3] = src[i * 4];
-    } else {
-      const tmp = document.createElement("canvas");
-      tmp.width = mw; tmp.height = mh;
-      const tctx = tmp.getContext("2d");
-      const tid = tctx.createImageData(mw, mh);
-      for (let i = 0; i < mw * mh; i++) {
-        const a = ch === 1 ? src[i] : src[i * ch];
-        tid.data[i * 4] = a;
-        tid.data[i * 4 + 1] = a;
-        tid.data[i * 4 + 2] = a;
-        tid.data[i * 4 + 3] = 255;
-      }
-      tctx.putImageData(tid, 0, 0);
-      const scaled = document.createElement("canvas");
-      scaled.width = w; scaled.height = h;
-      scaled.getContext("2d").drawImage(tmp, 0, 0, w, h);
-      const sd = scaled.getContext("2d").getImageData(0, 0, w, h).data;
-      for (let i = 0; i < w * h; i++) d[i * 4 + 3] = sd[i * 4];
-    }
-  }
+  for (let i = 0; i < w * h; i++) img.data[i * 4 + 3] = a[i * 4 + 3];
   ctx.putImageData(img, 0, 0);
-  return origCanvas;
+  return orig;
 }
 
 async function cutRmbg(file, onStatus) {
   const { model, processor } = await loadRmbg(onStatus);
-  if (onStatus) onStatus("AI cutting ceramic…");
+  if (onStatus) onStatus("AI cutting…");
   const url = URL.createObjectURL(file);
   try {
     const image = await RawImage.fromURL(url);
@@ -107,9 +75,10 @@ async function cutRmbg(file, onStatus) {
       image.width,
       image.height
     );
+    image.putAlpha(mask);
+    const maskCanvas = image.toCanvas();
     const orig = await canvasFromFile(file);
-    const data = mask.data;
-    return applyMaskToOriginal(orig, data, mask.width, mask.height);
+    return stampAlpha(orig, maskCanvas);
   } finally {
     URL.revokeObjectURL(url);
   }
@@ -124,7 +93,7 @@ async function cutImgly(file, onStatus) {
     output: { format: "image/png", quality: 1 },
     progress: (key, current, total) => {
       if (!onStatus || !total) return;
-      onStatus("ISNet " + key + " " + Math.round((100 * current) / total) + "%");
+      onStatus("AI " + key + " " + Math.round((100 * current) / total) + "%");
     },
   });
   const cut = await createImageBitmap(blob);
@@ -134,7 +103,7 @@ async function cutImgly(file, onStatus) {
   maskC.getContext("2d").drawImage(cut, 0, 0);
   cut.close();
   const orig = await canvasFromFile(file);
-  return applyMaskToOriginal(orig, maskC);
+  return stampAlpha(orig, maskC);
 }
 
 window.cutWithAI = async function cutWithAI(file, onStatus) {
@@ -142,10 +111,21 @@ window.cutWithAI = async function cutWithAI(file, onStatus) {
     return await cutRmbg(file, onStatus);
   } catch (err) {
     if (onStatus) onStatus("RMBG failed, trying ISNet…");
-    try {
-      return await cutImgly(file, onStatus);
-    } catch (err2) {
-      throw err;
-    }
+    return await cutImgly(file, onStatus);
   }
 };
+
+loadRmbg(function (t) {
+  const el = document.getElementById("status");
+  if (el) el.textContent = t;
+})
+  .then(function () {
+    window.AI_READY = true;
+    const el = document.getElementById("status");
+    if (el) el.textContent = "AI cut ready.";
+  })
+  .catch(function (err) {
+    window.AI_ERROR = err && err.message ? err.message : "model failed";
+    const el = document.getElementById("status");
+    if (el) el.textContent = "AI model: " + window.AI_ERROR;
+  });

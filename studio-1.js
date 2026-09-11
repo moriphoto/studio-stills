@@ -8,7 +8,7 @@ function readSettings() {
   return {
     ai: typeof window.cutWithAI === "function",
     mask: Number(document.getElementById("mask") && document.getElementById("mask").value || 68),
-    foot: Number(document.getElementById("foot") && document.getElementById("foot").value || 58),
+    foot: Number(document.getElementById("foot") && document.getElementById("foot").value || 70),
     tol: Number(document.getElementById("tol") && document.getElementById("tol").value || 64),
     contrast: Number(document.getElementById("con") && document.getElementById("con").value || 110) / 100,
   };

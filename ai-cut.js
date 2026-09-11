@@ -1,6 +1,5 @@
-/* Browser cut. Tried rembg U2-Net + ISNet on a Mackenzie sphere — both cut
-   the ceramic clean. This page runs the same class of model (RMBG-1.4) via
-   transformers.js. No API key. First load ~50MB, then cached. */
+/* Browser cut. RMBG / ISNet supply a mask. The ceramic pixels
+   always come from the original JPEG — never from the model RGB. */
 import {
   AutoModel,
   AutoProcessor,
@@ -37,6 +36,65 @@ async function loadRmbg(onStatus) {
   return pack;
 }
 
+function canvasFromFile(file) {
+  return createImageBitmap(file).then((bmp) => {
+    const c = document.createElement("canvas");
+    c.width = bmp.width;
+    c.height = bmp.height;
+    c.getContext("2d").drawImage(bmp, 0, 0);
+    bmp.close();
+    return c;
+  });
+}
+
+function applyMaskToOriginal(origCanvas, maskCanvasOrData, mw, mh) {
+  const w = origCanvas.width, h = origCanvas.height;
+  const ctx = origCanvas.getContext("2d", { willReadFrequently: true });
+  const img = ctx.getImageData(0, 0, w, h);
+  const d = img.data;
+  let alpha;
+  if (maskCanvasOrData instanceof HTMLCanvasElement) {
+    const mctx = maskCanvasOrData.getContext("2d", { willReadFrequently: true });
+    if (maskCanvasOrData.width !== w || maskCanvasOrData.height !== h) {
+      const tmp = document.createElement("canvas");
+      tmp.width = w; tmp.height = h;
+      tmp.getContext("2d").drawImage(maskCanvasOrData, 0, 0, w, h);
+      alpha = tmp.getContext("2d").getImageData(0, 0, w, h).data;
+    } else {
+      alpha = mctx.getImageData(0, 0, w, h).data;
+    }
+    for (let i = 0; i < w * h; i++) d[i * 4 + 3] = alpha[i * 4 + 3];
+  } else {
+    const src = maskCanvasOrData;
+    const ch = src.length === w * h ? 1 : src.length === w * h * 4 ? 4 : (src.length / (mw * mh)) | 0 || 1;
+    if (mw === w && mh === h && ch === 1) {
+      for (let i = 0; i < w * h; i++) d[i * 4 + 3] = src[i];
+    } else if (mw === w && mh === h && ch === 4) {
+      for (let i = 0; i < w * h; i++) d[i * 4 + 3] = src[i * 4];
+    } else {
+      const tmp = document.createElement("canvas");
+      tmp.width = mw; tmp.height = mh;
+      const tctx = tmp.getContext("2d");
+      const tid = tctx.createImageData(mw, mh);
+      for (let i = 0; i < mw * mh; i++) {
+        const a = ch === 1 ? src[i] : src[i * ch];
+        tid.data[i * 4] = a;
+        tid.data[i * 4 + 1] = a;
+        tid.data[i * 4 + 2] = a;
+        tid.data[i * 4 + 3] = 255;
+      }
+      tctx.putImageData(tid, 0, 0);
+      const scaled = document.createElement("canvas");
+      scaled.width = w; scaled.height = h;
+      scaled.getContext("2d").drawImage(tmp, 0, 0, w, h);
+      const sd = scaled.getContext("2d").getImageData(0, 0, w, h).data;
+      for (let i = 0; i < w * h; i++) d[i * 4 + 3] = sd[i * 4];
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+  return origCanvas;
+}
+
 async function cutRmbg(file, onStatus) {
   const { model, processor } = await loadRmbg(onStatus);
   if (onStatus) onStatus("AI cutting ceramic…");
@@ -49,8 +107,9 @@ async function cutRmbg(file, onStatus) {
       image.width,
       image.height
     );
-    image.putAlpha(mask);
-    return image.toCanvas();
+    const orig = await canvasFromFile(file);
+    const data = mask.data;
+    return applyMaskToOriginal(orig, data, mask.width, mask.height);
   } finally {
     URL.revokeObjectURL(url);
   }
@@ -68,13 +127,14 @@ async function cutImgly(file, onStatus) {
       onStatus("ISNet " + key + " " + Math.round((100 * current) / total) + "%");
     },
   });
-  const bmp = await createImageBitmap(blob);
-  const c = document.createElement("canvas");
-  c.width = bmp.width;
-  c.height = bmp.height;
-  c.getContext("2d").drawImage(bmp, 0, 0);
-  bmp.close();
-  return c;
+  const cut = await createImageBitmap(blob);
+  const maskC = document.createElement("canvas");
+  maskC.width = cut.width;
+  maskC.height = cut.height;
+  maskC.getContext("2d").drawImage(cut, 0, 0);
+  cut.close();
+  const orig = await canvasFromFile(file);
+  return applyMaskToOriginal(orig, maskC);
 }
 
 window.cutWithAI = async function cutWithAI(file, onStatus) {

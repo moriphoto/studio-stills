@@ -39,7 +39,7 @@
   <header>
     <p class="k">John Mackenzie Ceramics</p>
     <h1>Studio stills</h1>
-    <p class="lead">Auto extend reads the cove off the photo and fills left and right. Manual calibrate is still there if a set needs a pick.</p>
+    <p class="lead">The JPEG stays intact and centred. Cove extends left and right to 1920 × 1080. Cut keeps the object and its shadow, then blends.</p>
   </header>
   <div class="bar">
     <label class="btn" for="files">Add JPEGs</label>
@@ -48,23 +48,17 @@
     <button class="ghost" id="calibrate">Calibrate</button>
     <label class="t"><input type="radio" name="res" id="resWeb" checked> Web 1920</label>
     <label class="t"><input type="radio" name="res" id="resHigh"> High (upload)</label>
-    <label class="t">Mask <input id="mask" type="range" min="30" max="95" value="68"> <span id="maskv">68</span></label>
-    <label class="t">Foot blend <input id="foot" type="range" min="0" max="90" value="70"> <span id="footv">70</span></label>
-    <label class="t">Paper match <input id="tol" type="range" min="20" max="80" value="64"> <span id="tolv">64</span></label>
-    <label class="t">Contrast <input id="con" type="range" min="100" max="130" value="110"> <span id="conv">1.10</span></label>
     <button class="ghost" id="run">Process all</button>
-    <button class="gold" id="applyAll">Copy settings to all</button>
-    <button class="ghost" id="selectAll">Select all</button>
     <button class="ghost" id="reset">Reset</button>
     <button class="ghost" id="dl">Download singles</button>
     <span id="status"></span>
   </div>
-  <div class="drop" id="drop">Drop original JPEGs. Auto extend the cove, then Process all.</div>
+  <div class="drop" id="drop">Drop original JPEGs. Process extends the cove and keeps the pot where it sat.</div>
   <section id="cal" hidden>
-    <p class="k">Cove — auto from the edges, or click dark then light</p>
+    <p class="k">Cove preview</p>
     <div class="row">
       <div>
-        <img id="calSrc" alt="Pick tones">
+        <img id="calSrc" alt="Source">
       </div>
       <div id="calPrevWrap" hidden>
         <img id="calPrev" alt="Plate">
@@ -75,7 +69,7 @@
     </div>
   </section>
   <section id="heroWrap" hidden>
-    <p class="k" style="padding:0 32px 8px">Output</p>
+    <p class="k" style="padding:0 32px 8px">1920 × 1080</p>
     <img id="hero" alt="still" style="width:100%;display:block;border-top:1px solid rgba(255,255,255,.1);border-bottom:1px solid rgba(255,255,255,.1)">
   </section>
   <div class="grid" id="grid"></div>

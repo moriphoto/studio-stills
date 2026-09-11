@@ -184,10 +184,16 @@ function placeOnPlate(cutCanvas, contrast, origImg, s) {
   return sitOnPlate(cutCanvas, origImg, s);
 }
 
+function applyAutoCove(img) {
+  if (!window.autoCove || typeof window.extendFromImage !== "function") return;
+  groundEl = window.extendFromImage(img);
+}
+
 async function cutFromFile(file, s, onStatus) {
   s = s || readSettings();
   const orig = await loadImage(file);
   setOutputSize(orig);
+  applyAutoCove(orig);
   if (typeof window.cutWithAI === "function") {
     try {
       if (onStatus) onStatus("Cutting…");
@@ -224,6 +230,7 @@ function forceFrame(cut) {
 function frameStill(img, s) {
   s = s || readSettings();
   setOutputSize(img);
+  applyAutoCove(img);
   const cut = cutPot(img, s.tol || 64, s.mask);
   return sitOnPlate(cut.canvas, img, s);
 }

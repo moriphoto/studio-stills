@@ -280,6 +280,63 @@ function gradeCut(canvas, contrast) {
   ctx.putImageData(image, 0, 0);
 }
 
+function bboxFromAlpha(canvas) {
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
+  const image = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const d = image.data, w = canvas.width, h = canvas.height;
+  let minX = w, minY = h, maxX = 0, maxY = 0;
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    if (d[(y * w + x) * 4 + 3] > 18) {
+      if (x < minX) minX = x;
+      if (y < minY) minY = y;
+      if (x > maxX) maxX = x;
+      if (y > maxY) maxY = y;
+    }
+  }
+  if (maxX < minX) return { x: 0, y: 0, w: w, h: h };
+  return { x: minX, y: minY, w: maxX - minX + 1, h: maxY - minY + 1 };
+}
+
+function placeOnPlate(cutCanvas, contrast) {
+  gradeCut(cutCanvas, contrast || 1.1);
+  const bb = bboxFromAlpha(cutCanvas);
+  const maxW = W * 0.78;
+  const maxH = H * 0.62;
+  const scale = Math.min(maxW / Math.max(1, bb.w), maxH / Math.max(1, bb.h));
+  const dw = bb.w * scale;
+  const dh = bb.h * scale;
+  const dx = (W - dw) / 2;
+  const dy = H * 0.86 - dh;
+  const out = document.createElement("canvas");
+  out.width = W; out.height = H;
+  const ctx = out.getContext("2d");
+  paintPlate(ctx);
+  ctx.save();
+  ctx.filter = "blur(22px)";
+  ctx.fillStyle = "rgba(0,0,0,0.18)";
+  ctx.beginPath();
+  ctx.ellipse(dx + dw * 0.52, dy + dh - 4, dw * 0.4, Math.max(12, dh * 0.055), 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+  ctx.drawImage(cutCanvas, bb.x, bb.y, bb.w, bb.h, dx, dy, dw, dh);
+  return { canvas: out, photo: cutCanvas, bbox: { x: dx, y: dy, w: dw, h: dh }, meanLuma: tone.l, width: out.width, height: out.height };
+}
+
+async function cutFromFile(file, t, c, onStatus) {
+  const wantAI = document.getElementById("ai") && document.getElementById("ai").checked;
+  if (wantAI && typeof window.cutWithAI === "function") {
+    try {
+      onStatus("AI cutting… first time downloads a model (~40MB).");
+      const rgba = await window.cutWithAI(file, onStatus);
+      return placeOnPlate(rgba, c);
+    } catch (err) {
+      onStatus("AI skipped: " + (err && err.message ? err.message : "using paper match"));
+    }
+  }
+  const img = await loadImage(file);
+  return frameStill(img, t, c);
+}
+
 function frameStill(img, tolerance, contrast) {
   tolerance = tolerance || 50;
   contrast = contrast || 1.1;
@@ -393,8 +450,8 @@ document.getElementById("run").onclick = async () => {
     for (let i=0;i<items.length;i++){
       status("Processing " + (i+1) + " of " + items.length + "…");
       await new Promise(r => setTimeout(r, 20));
-      const img = await loadImage(items[i].file);
-      items[i].cut = frameStill(img, t, c);
+      const imgWait = items[i];
+      imgWait.cut = await cutFromFile(items[i].file, t, c, status);
       items[i].framed = items[i].cut.canvas;
       items[i].processedUrl = URL.createObjectURL(await toBlob(items[i].framed));
       render();

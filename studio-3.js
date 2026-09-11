@@ -23,16 +23,10 @@ function addFiles(list){
   if (items.length > 20) items.length = 20;
   render();
   const framed = picked.some(f => /-1920/i.test(f.name));
-  status(picked.length + " added. Process all when ready." + (framed ? " Tip: use the original phone JPEG, not a -1920." : ""));
+  status(picked.length + " added. Process all." + (framed ? " Use the original JPEG, not a -1920." : ""));
 }
 
 document.getElementById("files").onchange = e => { addFiles(e.target.files); e.target.value = ""; };
-document.getElementById("tol").oninput = e => { document.getElementById("tolv").textContent = e.target.value; };
-document.getElementById("con").oninput = e => { document.getElementById("conv").textContent = (Number(e.target.value)/100).toFixed(2); };
-["mask","foot"].forEach(id => {
-  const el = document.getElementById(id);
-  if (el) el.oninput = e => { const v = document.getElementById(id + "v"); if (v) v.textContent = e.target.value; };
-});
 const drop = document.getElementById("drop");
 drop.onclick = () => document.getElementById("files").click();
 drop.ondragover = e => e.preventDefault();
@@ -56,6 +50,7 @@ document.getElementById("run").onclick = async () => {
   try {
     if (!assetsReady) assetsReady = loadAssets();
     await assetsReady;
+    window.autoCove = true;
     for (let i=0;i<items.length;i++){
       const s = items[i].settings || bar;
       status("Cutting " + (i+1) + " of " + items.length + "…");
@@ -81,7 +76,7 @@ document.getElementById("run").onclick = async () => {
       }
     }
     const ok = items.filter(x => x.framed).length;
-    status(ok ? ("Done — " + ok + " file(s) at " + W + " × " + H + ".") : "Cut failed. Use the original JPEG.");
+    status(ok ? ("Done — " + ok + " at " + W + " × " + H + ".") : "Cut failed. Use the original JPEG.");
   } catch (err) {
     status("Process failed: " + (err && err.message ? err.message : "open Chrome console"));
   }
@@ -92,31 +87,13 @@ function resetStudio() {
   groupUrl = null;
   document.getElementById("grid").innerHTML = "";
   document.getElementById("heroWrap").hidden = true;
-  const g = document.getElementById("group"); if (g) g.hidden = true;
   document.getElementById("files").value = "";
   const hero = document.getElementById("hero");
   if (hero) hero.removeAttribute("src");
-  const mask = document.getElementById("mask"); if (mask) { mask.value = 68; document.getElementById("maskv").textContent = "68"; }
-  const foot = document.getElementById("foot"); if (foot) { foot.value = 70; document.getElementById("footv").textContent = "70"; }
-  const tol = document.getElementById("tol"); if (tol) { tol.value = 64; document.getElementById("tolv").textContent = "64"; }
-  const con = document.getElementById("con"); if (con) { con.value = 110; document.getElementById("conv").textContent = "1.10"; }
   const web = document.getElementById("resWeb"); if (web) web.checked = true;
   status("Reset.");
 }
 document.getElementById("reset").onclick = resetStudio;
-document.getElementById("selectAll").onclick = () => {
-  if (!items.length) { status("Add JPEGs first."); return; }
-  items.forEach(i => i.selected = true);
-  render();
-  status("All " + items.length + " selected.");
-};
-document.getElementById("applyAll").onclick = () => {
-  if (!items.length) { status("Add JPEGs first."); return; }
-  const s = readSettings();
-  items.forEach(i => { i.settings = Object.assign({}, s); i.selected = true; });
-  render();
-  status("Preset copied to " + items.length + " — Mask " + s.mask + ", Foot " + s.foot + ", Paper " + s.tol + ". Process all.");
-};
 document.getElementById("dl").onclick = async () => {
   let n = 0;
   for (const item of items) {

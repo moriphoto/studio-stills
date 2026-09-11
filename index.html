@@ -23,8 +23,6 @@
     article img { width:100%; aspect-ratio:16/9; object-fit:contain; background:#000; display:block; }
     article .m { padding:10px; display:flex; justify-content:space-between; font-size:12px; }
     #status { color:var(--gold); font-size:14px; }
-    #group { padding:0 32px 64px; }
-    #group img { width:100%; border:1px solid rgba(255,255,255,.1); }
     #files { color:#8a8a8a; font-size:12px; max-width:16rem; }
     label.t { font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:var(--mute); display:flex; gap:8px; align-items:center; }
   </style>
@@ -33,12 +31,11 @@
   <header>
     <p class="k">John Mackenzie Ceramics</p>
     <h1>Studio stills</h1>
-    <p class="lead">Cut the ceramic. No shadow. Foot blend is original ground. If AI is still loading, Process still runs on paper match.</p>
+    <p class="lead">Cut the ceramic. Foot blend is original ground at the base. Paper match and contrast sit it on the cove. 1920 × 1080.</p>
   </header>
   <div class="bar">
     <label class="btn" for="files">Add JPEGs</label>
     <input id="files" type="file" accept="image/jpeg,image/png,.jpg,.jpeg,.png,.webp" multiple>
-    <label class="t"><input id="ai" type="checkbox" checked> AI cut</label>
     <label class="t">Mask <input id="mask" type="range" min="30" max="95" value="68"> <span id="maskv">68</span></label>
     <label class="t">Foot blend <input id="foot" type="range" min="0" max="80" value="58"> <span id="footv">58</span></label>
     <label class="t">Paper match <input id="tol" type="range" min="20" max="80" value="64"> <span id="tolv">64</span></label>
@@ -48,22 +45,17 @@
     <button class="ghost" id="selectAll">Select all</button>
     <button class="ghost" id="reset">Reset</button>
     <button class="ghost" id="dl">Download singles</button>
-    <button class="gold" id="groupBtn">Group shot</button>
     <span id="status"></span>
   </div>
-  <div class="drop" id="drop">Click or drop original JPEGs. First AI cut downloads a model once.</div>
+  <div class="drop" id="drop">Click or drop original JPEGs. Not a -1920 file.</div>
   <section id="heroWrap" hidden>
     <p class="k" style="padding:0 32px 8px">1920 × 1080 output</p>
     <img id="hero" alt="1920 by 1080" style="width:100%;display:block;border-top:1px solid rgba(255,255,255,.1);border-bottom:1px solid rgba(255,255,255,.1)">
   </section>
   <div class="grid" id="grid"></div>
-  <section id="group" hidden>
-    <p class="k" style="margin-bottom:12px">Collection</p>
-    <img id="groupImg" alt="Collection">
-    <button class="btn" id="dlGroup" style="margin-top:16px">Download group shot</button>
-  </section>
-  <script src="https://cdn.jsdelivr.net/gh/moriphoto/studio-stills@62c2cc8b2bcad7c295651534e608064c966eff05/studio.js"></script>
-  <script src="studio-overrides.js"></script>
+  <script src="studio-1.js"></script>
+  <script src="studio-2.js"></script>
+  <script src="studio-3.js"></script>
   <script src="admin-bridge.js"></script>
   <script type="module" src="ai-cut.js"></script>
 </body>

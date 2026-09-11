@@ -25,17 +25,21 @@
     #status { color:var(--gold); font-size:14px; }
     #files { color:#8a8a8a; font-size:12px; max-width:16rem; }
     label.t { font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:var(--mute); display:flex; gap:8px; align-items:center; }
+    #cal { padding:16px 32px 32px; border-bottom:1px solid rgba(255,255,255,.1); }
+    #calSrc, #calPrev { width:100%; max-height:420px; object-fit:contain; background:#000; cursor:crosshair; display:block; border:1px solid rgba(255,255,255,.12); }
+    #cal .row { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:12px; }
   </style>
 </head>
 <body>
   <header>
     <p class="k">John Mackenzie Ceramics</p>
     <h1>Studio stills</h1>
-    <p class="lead">Cut the ceramic. Keep the natural foot shadow. Object sits on the centre of the cove. Web is 1920 × 1080. High follows the JPEG you drop.</p>
+    <p class="lead">Calibrate the cove from the set. Click dark top, then light floor. Process sits every pot on that plate.</p>
   </header>
   <div class="bar">
     <label class="btn" for="files">Add JPEGs</label>
     <input id="files" type="file" accept="image/jpeg,image/png,.jpg,.jpeg,.png,.webp" multiple>
+    <button class="gold" id="calibrate">Calibrate</button>
     <label class="t"><input type="radio" name="res" id="resWeb" checked> Web 1920</label>
     <label class="t"><input type="radio" name="res" id="resHigh"> High (upload)</label>
     <label class="t">Mask <input id="mask" type="range" min="30" max="95" value="68"> <span id="maskv">68</span></label>
@@ -49,7 +53,21 @@
     <button class="ghost" id="dl">Download singles</button>
     <span id="status"></span>
   </div>
-  <div class="drop" id="drop">Click or drop original JPEGs. Not a -1920 file.</div>
+  <div class="drop" id="drop">Click or drop original JPEGs. Calibrate one from the set, then Process all.</div>
+  <section id="cal" hidden>
+    <p class="k">Calibration — dark top, then light floor</p>
+    <div class="row">
+      <div>
+        <img id="calSrc" alt="Pick tones">
+      </div>
+      <div id="calPrevWrap" hidden>
+        <img id="calPrev" alt="Plate">
+        <button class="gold" id="calDl" style="margin-top:12px">Download studio-ground.jpg</button>
+        <button class="ghost" id="calUse" style="margin-top:12px">Use this plate</button>
+        <button class="ghost" id="calClose" style="margin-top:12px">Close</button>
+      </div>
+    </div>
+  </section>
   <section id="heroWrap" hidden>
     <p class="k" style="padding:0 32px 8px">Output</p>
     <img id="hero" alt="still" style="width:100%;display:block;border-top:1px solid rgba(255,255,255,.1);border-bottom:1px solid rgba(255,255,255,.1)">
@@ -59,6 +77,7 @@
   <script src="studio-cut.js"></script>
   <script src="studio-2.js"></script>
   <script src="studio-3.js"></script>
+  <script src="studio-cal.js"></script>
   <script src="admin-bridge.js"></script>
   <script type="module" src="ai-cut.js"></script>
 </body>

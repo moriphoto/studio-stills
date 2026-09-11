@@ -1,4 +1,4 @@
-/* Patches the pinned engine. Mask cut. Original JPEG. No fake shadow. */
+/* Patches the pinned engine. */
 window.paintSit = function paintSit() {};
 
 window.gradeCut = function gradeCut(canvas, contrast) {
@@ -73,23 +73,69 @@ window.sitOnPlate = function sitOnPlate(cutCanvas, origImg, s) {
   return { canvas: out, photo: cutCanvas, bbox: { x: dx, y: dy, w: dw, h: dh }, meanLuma: tone.l, width: W, height: H };
 };
 
+function waitForAI(onStatus, ms) {
+  ms = ms || 120000;
+  const start = Date.now();
+  return new Promise(function (res, rej) {
+    (function tick() {
+      if (typeof window.cutWithAI === "function" && window.AI_READY) return res();
+      if (window.AI_ERROR) return rej(new Error(window.AI_ERROR));
+      if (Date.now() - start > ms) return rej(new Error("AI timed out loading"));
+      if (onStatus) onStatus("Waiting for AI cut model…");
+      setTimeout(tick, 400);
+    })();
+  });
+}
+
 window.cutFromFile = async function cutFromFile(file, s, onStatus) {
   s = s || readSettings();
   const orig = await loadImage(file);
-  const ready = typeof window.cutWithAI === "function";
-  if (s.ai && !ready && onStatus) onStatus("AI still loading — paper match this pass.");
-  if (s.ai && ready) {
+  if (s.ai) {
     try {
+      await waitForAI(onStatus, 180000);
       if (onStatus) onStatus("AI cutting…");
-      let rgba = await Promise.race([
-        window.cutWithAI(file, onStatus),
-        new Promise((_, rej) => setTimeout(() => rej(new Error("AI timed out")), 180000))
-      ]);
+      let rgba = await window.cutWithAI(file, onStatus);
       rgba = toCanvas(rgba, orig.width, orig.height);
       return forceFrame(placeOnPlate(rgba, s.contrast, orig, s));
     } catch (err) {
-      if (onStatus) onStatus("AI skipped: " + (err && err.message ? err.message : "paper match"));
+      if (onStatus) onStatus("AI failed: " + (err && err.message ? err.message : "cut") + " — paper match.");
     }
   }
   return forceFrame(frameStill(orig, s));
 };
+
+(function bindProcess() {
+  const btn = document.getElementById("run");
+  if (!btn) return;
+  btn.onclick = async function () {
+    if (!items.length) { status("Add original JPEGs first, then Process all."); return; }
+    const bar = readSettings();
+    btn.disabled = true;
+    try {
+      if (typeof loadAssets === "function") {
+        if (!window.assetsReady) window.assetsReady = loadAssets();
+        await window.assetsReady;
+      }
+      if (bar.ai) {
+        try { await waitForAI(status, 180000); }
+        catch (e) { status("AI not ready: " + e.message); }
+      }
+      for (let i = 0; i < items.length; i++) {
+        const s = items[i].settings || bar;
+        status("Cutting " + (i + 1) + " of " + items.length + "…");
+        items[i].cut = await cutFromFile(items[i].file, s, status);
+        items[i].framed = items[i].cut.canvas;
+        items[i].processedUrl = URL.createObjectURL(await toBlob(items[i].framed));
+        render();
+        const hero = document.getElementById("hero");
+        const wrap = document.getElementById("heroWrap");
+        if (hero && wrap) { wrap.hidden = false; hero.src = items[i].processedUrl; }
+      }
+      const ok = items.filter(function (x) { return x.framed; }).length;
+      status(ok ? ("Done — " + ok + " still(s) at 1920 × 1080.") : "Cut failed.");
+    } catch (err) {
+      status("Process failed: " + (err && err.message ? err.message : "error"));
+    }
+    btn.disabled = false;
+  };
+})();

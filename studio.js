@@ -12,8 +12,8 @@ let tone = { l: 110, r: 118, g: 110, b: 102 };
 function readSettings() {
   return {
     ai: !!(document.getElementById("ai") && document.getElementById("ai").checked),
-    mask: Number(document.getElementById("mask") && document.getElementById("mask").value || 72),
-    foot: Number(document.getElementById("foot") && document.getElementById("foot").value || 42),
+    mask: Number(document.getElementById("mask") && document.getElementById("mask").value || 68),
+    foot: Number(document.getElementById("foot") && document.getElementById("foot").value || 58),
     tol: Number(document.getElementById("tol") && document.getElementById("tol").value || 64),
     contrast: Number(document.getElementById("con") && document.getElementById("con").value || 110) / 100,
   };
@@ -346,7 +346,37 @@ function toCanvas(src, w, h) {
   return c;
 }
 
-function keepFoot(cutCanvas, origImg, footPct) {
+function sampleLight(orig, bb) {
+  const w = orig.width, h = orig.height;
+  const ctx = orig.getContext("2d", { willReadFrequently: true });
+  const data = ctx.getImageData(0, 0, w, h).data;
+  const y0 = Math.max(0, Math.floor(bb.y + bb.h * 0.78));
+  const y1 = Math.min(h - 1, Math.ceil(bb.y + bb.h + Math.max(12, bb.h * 0.2)));
+  const x0 = Math.max(0, Math.floor(bb.x - bb.w * 0.22));
+  const x1 = Math.min(w - 1, Math.ceil(bb.x + bb.w * 1.22));
+  const cx = bb.x + bb.w / 2;
+  const cy = bb.y + bb.h;
+  let sx = 0, sy = 0, sw = 0;
+  for (let y = y0; y <= y1; y += 2) {
+    for (let x = x0; x <= x1; x += 2) {
+      const i = (y * w + x) * 4;
+      const L = luma(data[i], data[i + 1], data[i + 2]);
+      if (L > 108) continue;
+      const wt = (108 - L) / 108;
+      sx += (x - cx) * wt;
+      sy += (y - cy) * wt;
+      sw += wt;
+    }
+  }
+  if (sw < 10) return { dx: 0.14, dy: 0.03, power: 0.62 };
+  return {
+    dx: clamp(sx / sw / Math.max(1, bb.w), -0.22, 0.38),
+    dy: clamp(sy / sw / Math.max(1, bb.h), -0.02, 0.14),
+    power: clamp(0.45 + sw / 500, 0.45, 1),
+  };
+}
+
+function keepFoot(cutCanvas, origImg, footPct, light) {
   footPct = Number(footPct);
   if (!origImg || footPct < 2) return;
   const w = cutCanvas.width, h = cutCanvas.height;
@@ -356,32 +386,85 @@ function keepFoot(cutCanvas, origImg, footPct) {
   const od = orig.getContext("2d", { willReadFrequently: true }).getImageData(0, 0, w, h).data;
   const d = cut.data;
   const bb = bboxFromAlpha(cutCanvas);
-  const pad = bb.w * (0.06 + footPct / 500);
-  const strip = Math.max(10, (footPct / 100) * Math.max(24, bb.h * 0.5));
-  const y0 = Math.floor(bb.y + bb.h * 0.72);
+  const padL = bb.w * (0.08 + footPct / 500) * (light && light.dx < 0 ? 1.35 : 1);
+  const padR = bb.w * (0.08 + footPct / 500) * (light && light.dx > 0 ? 1.45 : 1);
+  const strip = Math.max(14, (footPct / 100) * Math.max(28, bb.h * 0.55));
+  const y0 = Math.floor(bb.y + bb.h * 0.7);
   const y1 = Math.min(h - 1, Math.ceil(bb.y + bb.h + strip));
-  const x0 = Math.max(0, Math.floor(bb.x - pad));
-  const x1 = Math.min(w - 1, Math.ceil(bb.x + bb.w + pad));
+  const x0 = Math.max(0, Math.floor(bb.x - padL));
+  const x1 = Math.min(w - 1, Math.ceil(bb.x + bb.w + padR));
   const cx0 = bb.x + bb.w / 2;
-  const rx = bb.w / 2 + pad;
+  const rx = bb.w / 2 + Math.max(padL, padR);
+  const bias = light && light.dx != null ? light.dx : 0.14;
   for (let y = y0; y <= y1; y++) {
     const v = (y - y0) / Math.max(1, y1 - y0);
-    const fade = Math.pow(1 - v, 1.55);
+    const fade = Math.pow(1 - v, 1.35);
     for (let x = x0; x <= x1; x++) {
       const i = (y * w + x) * 4;
-      if (d[i + 3] > 210) continue;
-      const horiz = Math.max(0, 1 - Math.pow((x - cx0) / rx, 2));
-      const keep = fade * horiz;
-      if (keep < 0.05) continue;
-      const oa = Math.round(keep * 200);
-      if (oa <= d[i + 3]) continue;
-      d[i] = od[i];
-      d[i + 1] = od[i + 1];
-      d[i + 2] = od[i + 2];
-      d[i + 3] = oa;
+      if (d[i + 3] > 220) continue;
+      const side = (x - cx0) / rx;
+      const horiz = Math.max(0, 1 - side * side);
+      const along = bias >= 0 ? Math.max(0, side) : Math.max(0, -side);
+      const L = luma(od[i], od[i + 1], od[i + 2]);
+      const shadow = L < 140 ? (140 - L) / 140 : 0;
+      const keep = fade * horiz * (0.7 + 0.85 * shadow + 0.3 * along);
+      if (keep < 0.04) continue;
+      const mul = 1 - 0.42 * shadow;
+      const oa = Math.round(Math.min(235, keep * (175 + shadow * 90)));
+      if (oa <= d[i + 3] && shadow < 0.15) continue;
+      d[i] = od[i] * mul;
+      d[i + 1] = od[i + 1] * mul;
+      d[i + 2] = od[i + 2] * mul;
+      d[i + 3] = Math.max(d[i + 3], oa);
     }
   }
   ctx.putImageData(cut, 0, 0);
+}
+
+function paintSit(ctx, box, light) {
+  const w = box.w, h = box.h;
+  const ox = (light && light.dx != null ? light.dx : 0.14) * w;
+  const oy = (light && light.dy != null ? light.dy : 0.03) * Math.max(8, h * 0.2);
+  const p = light && light.power != null ? light.power : 0.6;
+  const cx = box.x + w * 0.5 + ox;
+  const cy = box.y + h - 1 + oy;
+  ctx.save();
+  ctx.filter = "blur(32px)";
+  ctx.fillStyle = "rgba(0,0,0," + (0.16 + 0.22 * p).toFixed(3) + ")";
+  ctx.beginPath();
+  ctx.ellipse(cx, cy, w * 0.48, Math.max(16, h * 0.075), 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.filter = "blur(11px)";
+  ctx.fillStyle = "rgba(0,0,0," + (0.2 + 0.22 * p).toFixed(3) + ")";
+  ctx.beginPath();
+  ctx.ellipse(box.x + w * 0.5 + ox * 0.35, box.y + h, w * 0.3, Math.max(9, h * 0.038), 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
+function sitOnPlate(cutCanvas, origImg, s) {
+  s = s || readSettings();
+  hardenMask(cutCanvas, s.mask);
+  const orig = origImg ? toCanvas(origImg, cutCanvas.width, cutCanvas.height) : null;
+  const obj = bboxFromAlpha(cutCanvas);
+  const light = orig ? sampleLight(orig, obj) : { dx: 0.14, dy: 0.03, power: 0.62 };
+  keepFoot(cutCanvas, orig || origImg, s.foot, light);
+  gradeCut(cutCanvas, s.contrast || 1.1);
+  const bb = bboxFromAlpha(cutCanvas);
+  const maxW = W * 0.78;
+  const maxH = H * 0.62;
+  const scale = Math.min(maxW / Math.max(1, bb.w), maxH / Math.max(1, bb.h));
+  const dw = bb.w * scale;
+  const dh = bb.h * scale;
+  const dx = (W - dw) / 2;
+  const dy = H * 0.86 - dh;
+  const out = document.createElement("canvas");
+  out.width = W; out.height = H;
+  const ctx = out.getContext("2d");
+  paintPlate(ctx);
+  paintSit(ctx, { x: dx, y: dy, w: dw, h: dh }, light);
+  ctx.drawImage(cutCanvas, bb.x, bb.y, bb.w, bb.h, dx, dy, dw, dh);
+  return { canvas: out, photo: cutCanvas, bbox: { x: dx, y: dy, w: dw, h: dh }, meanLuma: tone.l, width: W, height: H, light: light };
 }
 
 function bboxFromAlpha(canvas) {
@@ -403,33 +486,8 @@ function bboxFromAlpha(canvas) {
 
 function placeOnPlate(cutCanvas, contrast, origImg, s) {
   s = s || readSettings();
-  hardenMask(cutCanvas, s.mask);
-  keepFoot(cutCanvas, origImg, s.foot);
-  gradeCut(cutCanvas, contrast || s.contrast || 1.1);
-  const bb = bboxFromAlpha(cutCanvas);
-  const maxW = W * 0.78;
-  const maxH = H * 0.62;
-  const scale = Math.min(maxW / Math.max(1, bb.w), maxH / Math.max(1, bb.h));
-  const dw = bb.w * scale;
-  const dh = bb.h * scale;
-  const dx = (W - dw) / 2;
-  const dy = H * 0.86 - dh;
-  const out = document.createElement("canvas");
-  out.width = W; out.height = H;
-  const ctx = out.getContext("2d");
-  paintPlate(ctx);
-  const foot = Number(s.foot || 0);
-  if (foot < 18) {
-    ctx.save();
-    ctx.filter = "blur(22px)";
-    ctx.fillStyle = "rgba(0,0,0,0.18)";
-    ctx.beginPath();
-    ctx.ellipse(dx + dw * 0.52, dy + dh - 4, dw * 0.4, Math.max(12, dh * 0.055), 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
-  }
-  ctx.drawImage(cutCanvas, bb.x, bb.y, bb.w, bb.h, dx, dy, dw, dh);
-  return { canvas: out, photo: cutCanvas, bbox: { x: dx, y: dy, w: dw, h: dh }, meanLuma: tone.l, width: out.width, height: out.height };
+  if (contrast) s.contrast = contrast;
+  return sitOnPlate(cutCanvas, origImg, s);
 }
 
 async function cutFromFile(file, s, onStatus) {
@@ -472,34 +530,8 @@ function forceFrame(cut) {
 
 function frameStill(img, s) {
   s = s || readSettings();
-  const tolerance = s.tol || 64;
-  const contrast = s.contrast || 1.1;
-  const cut = cutPot(img, tolerance, s.mask);
-  keepFoot(cut.canvas, img, s.foot);
-  gradeCut(cut.canvas, contrast);
-  const bb = bboxFromAlpha(cut.canvas);
-  const maxW = W * 0.78;
-  const maxH = H * 0.62;
-  const scale = Math.min(maxW / Math.max(1, bb.w), maxH / Math.max(1, bb.h));
-  const dw = bb.w * scale;
-  const dh = bb.h * scale;
-  const dx = (W - dw) / 2;
-  const dy = H * 0.86 - dh;
-
-  const out = document.createElement("canvas");
-  out.width = W;
-  out.height = H;
-  const ctx = out.getContext("2d");
-  paintPlate(ctx);
-  ctx.save();
-  ctx.filter = "blur(22px)";
-  ctx.fillStyle = "rgba(0,0,0,0.18)";
-  ctx.beginPath();
-  ctx.ellipse(dx + dw * 0.52, dy + dh - 4, dw * 0.4, Math.max(12, dh * 0.055), 0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.restore();
-  ctx.drawImage(cut.canvas, bb.x, bb.y, bb.w, bb.h, dx, dy, dw, dh);
-  return { canvas: out, photo: cut.canvas, bbox: { x: dx, y: dy, w: dw, h: dh }, meanLuma: tone.l, width: out.width, height: out.height };
+  const cut = cutPot(img, s.tol || 64, s.mask);
+  return sitOnPlate(cut.canvas, img, s);
 }
 
 function composeCollection(pieces) {
@@ -629,8 +661,8 @@ function resetStudio() {
   if (hero) hero.removeAttribute("src");
   const gi = document.getElementById("groupImg");
   if (gi) gi.removeAttribute("src");
-  const mask = document.getElementById("mask"); if (mask) { mask.value = 72; document.getElementById("maskv").textContent = "72"; }
-  const foot = document.getElementById("foot"); if (foot) { foot.value = 42; document.getElementById("footv").textContent = "42"; }
+  const mask = document.getElementById("mask"); if (mask) { mask.value = 68; document.getElementById("maskv").textContent = "68"; }
+  const foot = document.getElementById("foot"); if (foot) { foot.value = 58; document.getElementById("footv").textContent = "58"; }
   const tol = document.getElementById("tol"); if (tol) { tol.value = 64; document.getElementById("tolv").textContent = "64"; }
   const con = document.getElementById("con"); if (con) { con.value = 110; document.getElementById("conv").textContent = "1.10"; }
   status("Reset.");

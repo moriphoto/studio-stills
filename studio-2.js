@@ -138,19 +138,24 @@ function sitOnPlate(cutCanvas, origImg, s) {
   keepFoot(cutCanvas, origImg, s.foot);
   gradeCut(cutCanvas, s.contrast || 1);
   const bb = bboxFromAlpha(cutCanvas);
-  const maxW = W * 0.78;
-  const maxH = H * 0.62;
+  const maxW = W * 0.9;
+  const maxH = H * 0.76;
   const scale = Math.min(maxW / Math.max(1, bb.w), maxH / Math.max(1, bb.h));
   const dw = bb.w * scale;
   const dh = bb.h * scale;
   const bodyCx = (bodyCentreX(cutCanvas, bb) - bb.x) * scale;
   let dx = W / 2 - bodyCx;
-  if (dx < 24) dx = 24;
-  if (dx + dw > W - 24) dx = W - 24 - dw;
-  const dy = H * 0.86 - dh;
+  if (dx < 16) dx = 16;
+  if (dx + dw > W - 16) dx = W - 16 - dw;
+  const floor = (typeof window.coveFloor === "number") ? window.coveFloor : 0.91;
+  let dy = H * floor - dh;
+  if (dy < 20) dy = 20;
+  if (dy + dh > H - 12) dy = H - 12 - dh;
   const out = document.createElement("canvas");
   out.width = W; out.height = H;
   const ctx = out.getContext("2d");
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
   paintPlate(ctx);
   ctx.drawImage(cutCanvas, bb.x, bb.y, bb.w, bb.h, dx, dy, dw, dh);
   return { canvas: out, photo: cutCanvas, bbox: { x: dx, y: dy, w: dw, h: dh }, meanLuma: tone.l, width: W, height: H };
@@ -205,6 +210,8 @@ function forceFrame(cut) {
   const out = document.createElement("canvas");
   out.width = W; out.height = H;
   const ctx = out.getContext("2d");
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
   paintPlate(ctx);
   if (src && src.width && src.height) {
     const s = Math.min(W / src.width, H / src.height);

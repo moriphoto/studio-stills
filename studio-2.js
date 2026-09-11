@@ -70,29 +70,48 @@ function keepFoot(cutCanvas, origImg, footPct) {
   const od = orig.getContext("2d", { willReadFrequently: true }).getImageData(0, 0, w, h).data;
   const d = cut.data;
   const bb = bboxFromAlpha(cutCanvas);
-  const pad = bb.w * (0.08 + footPct / 380);
-  const strip = Math.max(14, (footPct / 100) * Math.max(28, bb.h * 0.42));
-  const y0 = Math.floor(bb.y + bb.h * 0.72);
-  const y1 = Math.min(h - 1, Math.ceil(bb.y + bb.h + strip));
-  const x0 = Math.max(0, Math.floor(bb.x - pad));
-  const x1 = Math.min(w - 1, Math.ceil(bb.x + bb.w + pad));
-  const cx0 = bb.x + bb.w / 2;
-  const rx = bb.w / 2 + pad;
+  const R = Math.max(10, Math.round(8 + footPct * 0.38));
+  const yFoot0 = Math.floor(bb.y + bb.h * 0.62);
+  const near = new Uint8Array(w * h);
+  for (let y = yFoot0; y < bb.y + bb.h && y < h; y++) {
+    for (let x = bb.x; x < bb.x + bb.w && x < w; x++) {
+      if (d[(y * w + x) * 4 + 3] < 220) continue;
+      const x0 = Math.max(0, x - R), x1 = Math.min(w - 1, x + R);
+      const y0 = Math.max(0, y - Math.round(R * 0.35));
+      const y1 = Math.min(h - 1, y + R);
+      for (let yy = y0; yy <= y1; yy++) {
+        for (let xx = x0; xx <= x1; xx++) {
+          const dx = xx - x, dy = yy - y;
+          if (dx * dx + dy * dy * 1.6 <= R * R) near[yy * w + xx] = 1;
+        }
+      }
+    }
+  }
+  const y0 = Math.floor(bb.y + bb.h * 0.7);
+  const y1 = Math.min(h - 1, Math.ceil(bb.y + bb.h + R));
   for (let y = y0; y <= y1; y++) {
-    const fade = Math.pow(1 - (y - y0) / Math.max(1, y1 - y0), 0.85);
-    for (let x = x0; x <= x1; x++) {
+    const fade = Math.pow(1 - (y - y0) / Math.max(1, y1 - y0), 0.7);
+    for (let x = Math.max(0, bb.x - R); x <= Math.min(w - 1, bb.x + bb.w + R); x++) {
       const i = (y * w + x) * 4;
       if (d[i + 3] > 248) continue;
-      const side = (x - cx0) / rx;
-      const horiz = Math.max(0, 1 - side * side);
+      if (!near[y * w + x]) continue;
       const oL = luma(od[i], od[i + 1], od[i + 2]);
-      const shadow = oL < 150 ? 1.25 : 0.75;
-      const keep = fade * horiz * (footPct / 62) * shadow;
-      if (keep < 0.025) continue;
-      const oa = Math.round(Math.min(230, keep * 220));
+      const shadow = oL < 165 ? 1.2 : 0.55;
+      const keep = fade * (footPct / 70) * shadow;
+      if (keep < 0.04) continue;
+      const oa = Math.round(Math.min(210, keep * 200));
       if (oa <= d[i + 3]) continue;
       d[i] = od[i]; d[i + 1] = od[i + 1]; d[i + 2] = od[i + 2];
       d[i + 3] = Math.max(d[i + 3], oa);
+    }
+  }
+  const copy = new Uint8ClampedArray(w * h);
+  for (let i = 0; i < w * h; i++) copy[i] = d[i * 4 + 3];
+  for (let y = y0; y <= y1; y++) {
+    for (let x = 1; x < w - 1; x++) {
+      const i = y * w + x;
+      if (copy[i] > 240) continue;
+      d[i * 4 + 3] = (copy[i] + copy[i - 1] + copy[i + 1] + copy[i - w] + copy[Math.min(w * h - 1, i + w)]) / 5;
     }
   }
   ctx.putImageData(cut, 0, 0);
@@ -163,6 +182,7 @@ function placeOnPlate(cutCanvas, contrast, origImg, s) {
 async function cutFromFile(file, s, onStatus) {
   s = s || readSettings();
   const orig = await loadImage(file);
+  setOutputSize(orig);
   if (typeof window.cutWithAI === "function") {
     try {
       if (onStatus) onStatus("Cutting…");
@@ -196,6 +216,7 @@ function forceFrame(cut) {
 
 function frameStill(img, s) {
   s = s || readSettings();
+  setOutputSize(img);
   const cut = cutPot(img, s.tol || 64, s.mask);
   return sitOnPlate(cut.canvas, img, s);
 }

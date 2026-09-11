@@ -1,4 +1,4 @@
-/* Auto cove: stretch the real edge of the photo left and right. */
+/* Two-pick cove. Dark top, light floor. That plate is the studio. */
 (function () {
   let srcImg = null;
   let step = 0;
@@ -7,7 +7,7 @@
   let plateCanvas = null;
   function $(id) { return document.getElementById(id); }
   function markLive(on) {
-    ["calUse", "calibrate", "calAuto"].forEach(function (id) {
+    ["calUse", "calibrate"].forEach(function (id) {
       const el = $(id);
       if (!el) return;
       if (on) el.classList.add("on"); else el.classList.remove("on");
@@ -40,60 +40,41 @@
   function ease(t) { return t * t * (3 - 2 * t); }
   function buildPlate(top, bot) {
     top = liftBlack(top);
-    const out = document.createElement("canvas");
-    out.width = 1920; out.height = 1080;
-    const ctx = out.getContext("2d");
-    const img = ctx.createImageData(1920, 1080);
+    const PW = 3840, PH = 2160;
+    const c = document.createElement("canvas");
+    c.width = PW; c.height = PH;
+    const ctx = c.getContext("2d");
+    const img = ctx.createImageData(PW, PH);
     const d = img.data;
-    for (let y = 0; y < 1080; y++) {
-      const t = ease(y / 1079);
+    for (let y = 0; y < PH; y++) {
+      const t = ease(y / (PH - 1));
       const rr = (top.r + (bot.r - top.r) * t) | 0;
       const gg = (top.g + (bot.g - top.g) * t) | 0;
       const bb = (top.b + (bot.b - top.b) * t) | 0;
-      for (let x = 0; x < 1920; x++) {
-        const i = (y * 1920 + x) * 4;
+      for (let x = 0; x < PW; x++) {
+        const i = (y * PW + x) * 4;
         d[i] = rr; d[i + 1] = gg; d[i + 2] = bb; d[i + 3] = 255;
       }
     }
     ctx.putImageData(img, 0, 0);
-    return out;
-  }
-
-  function extendFromImage(img) {
-    const sw = img.width, sh = img.height;
-    const band = Math.max(16, Math.floor(sw * 0.07));
-    const strip = document.createElement("canvas");
-    strip.width = band * 2;
-    strip.height = sh;
-    const sctx = strip.getContext("2d");
-    sctx.imageSmoothingEnabled = true;
-    sctx.imageSmoothingQuality = "high";
-    sctx.filter = "blur(1.4px)";
-    sctx.drawImage(img, 0, 0, band, sh, 0, 0, band, sh);
-    sctx.drawImage(img, sw - band, 0, band, sh, band, 0, band, sh);
-    const outW = typeof W === "number" ? W : 1920;
-    const outH = typeof H === "number" ? H : 1080;
     const out = document.createElement("canvas");
-    out.width = outW; out.height = outH;
-    const ctx = out.getContext("2d");
-    ctx.imageSmoothingEnabled = true;
-    ctx.imageSmoothingQuality = "high";
-    ctx.filter = "blur(0.8px)";
-    ctx.drawImage(strip, 0, 0, strip.width, sh, 0, 0, outW, outH);
-    ctx.filter = "none";
+    out.width = 1920; out.height = 1080;
+    const o = out.getContext("2d");
+    o.imageSmoothingEnabled = true;
+    o.imageSmoothingQuality = "high";
+    o.drawImage(c, 0, 0, 1920, 1080);
     return out;
   }
-  window.extendFromImage = extendFromImage;
-
   function applyPlate(canvas, floorY) {
     plateCanvas = canvas;
     const img = new Image();
     img.onload = function () {
       groundEl = img;
-      window.autoCove = true;
+      window.autoCove = false;
       window.coveFloor = typeof floorY === "number" ? Math.min(0.94, Math.max(0.8, floorY)) : 0.91;
+      try { localStorage.setItem("cove-plate", canvas.toDataURL("image/jpeg", 0.95)); } catch (e) {}
       markLive(true);
-      status("Cove extended from the photo edges. Process the set.");
+      status("Plate live. Process sits the cut on this cove.");
     };
     img.src = canvas.toDataURL("image/jpeg", 0.95);
     if ($("calPrev")) $("calPrev").src = img.src;
@@ -111,23 +92,13 @@
   }
   function openCal() {
     const src = items[0] && items[0].url;
-    if (!src) { status("Add a JPEG first."); return; }
+    if (!src) { status("Add a JPEG first, then Calibrate."); return; }
     $("cal").hidden = false;
     $("calSrc").src = src;
+    step = 0; dark = light = null;
     srcImg = new Image();
+    srcImg.onload = function () { status("Click the dark top of the cove."); };
     srcImg.src = src;
-  }
-  function runAuto() {
-    const item = items[0];
-    if (!item) { status("Add a JPEG first."); return; }
-    status("Reading cove from the photo…");
-    const img = new Image();
-    img.onload = function () {
-      srcImg = img;
-      if ($("calSrc")) $("calSrc").src = item.url;
-      applyPlate(extendFromImage(img), 0.91);
-    };
-    img.src = item.url;
   }
   function onPick(e) {
     if (!srcImg || !srcImg.width) return;
@@ -138,11 +109,10 @@
   }
   restorePlate();
   if ($("calibrate")) $("calibrate").onclick = openCal;
-  if ($("calAuto")) $("calAuto").onclick = runAuto;
   if ($("calSrc")) $("calSrc").onclick = onPick;
   if ($("calUse")) $("calUse").onclick = function () {
     if (plateCanvas) applyPlate(plateCanvas, window.coveFloor);
-    else if (srcImg) applyPlate(extendFromImage(srcImg), 0.91);
+    else status("Pick dark, then light.");
   };
   if ($("calDl")) $("calDl").onclick = function () {
     if (!groundEl) return;

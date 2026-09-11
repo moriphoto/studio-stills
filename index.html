@@ -33,7 +33,7 @@
   <header>
     <p class="k">John Mackenzie Ceramics</p>
     <h1>Studio stills</h1>
-    <p class="lead">Cut the ceramic. No shadow. Foot blend brings a little original ground under the foot. Paper match and contrast sit it on the black–white cove.</p>
+    <p class="lead">Cut the ceramic. No shadow. Foot blend is original ground. If AI is still loading, Process still runs on paper match.</p>
   </header>
   <div class="bar">
     <label class="btn" for="files">Add JPEGs</label>
@@ -51,7 +51,7 @@
     <button class="gold" id="groupBtn">Group shot</button>
     <span id="status"></span>
   </div>
-  <div class="drop" id="drop">Click or drop original JPEGs. First AI cut takes a minute. After that it is quick.</div>
+  <div class="drop" id="drop">Click or drop original JPEGs. First AI cut downloads a model once.</div>
   <section id="heroWrap" hidden>
     <p class="k" style="padding:0 32px 8px">1920 × 1080 output</p>
     <img id="hero" alt="1920 by 1080" style="width:100%;display:block;border-top:1px solid rgba(255,255,255,.1);border-bottom:1px solid rgba(255,255,255,.1)">
@@ -62,7 +62,8 @@
     <img id="groupImg" alt="Collection">
     <button class="btn" id="dlGroup" style="margin-top:16px">Download group shot</button>
   </section>
-  <script src="studio.js"></script>
+  <script src="https://cdn.jsdelivr.net/gh/moriphoto/studio-stills@62c2cc8b2bcad7c295651534e608064c966eff05/studio.js"></script>
+  <script src="studio-overrides.js"></script>
   <script src="admin-bridge.js"></script>
   <script type="module" src="ai-cut.js"></script>
 </body>

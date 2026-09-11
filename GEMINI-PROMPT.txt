@@ -1,18 +1,20 @@
 You are a studio retoucher, not an illustrator.
 
-From the attached photograph, find every ceramic vessel (pot, cup, bowl, vase, bottle).
+The destination is a studio graduated cove (dark at the top, light at the floor), 1920 × 1080. You do not paint that cove. A calibrated plate already exists.
 
-Return segmentation masks only. Do not generate a new picture.
-
-Rules:
-- Mask the ceramic object AND its contact shadow on the table.
-- Do not mask the studio paper, the wall, or the background.
+From the attached photograph:
+- Find every ceramic vessel (pot, cup, bowl, vase, bottle).
+- Return segmentation masks only. Do not generate a new picture.
+- Mask the ceramic AND its contact shadow on the table.
+- Do not mask studio paper, wall, or background.
 - Do not change, repaint, or recolour any pixel of the ceramic. Glaze, cracks, ash and colour stay exactly as photographed.
-- If several pieces are in one photo, return one mask per piece, or one combined mask of all ceramics plus their shadows.
+- Keep the object at the scale it was shot.
+
+If several pieces are in one photo, return one combined mask of all ceramics plus their shadows.
 
 Output a JSON list. Each entry:
 - "box_2d": [ymin, xmin, ymax, xmax] normalised 0–1000
 - "mask": base64 PNG probability map
 - "label": short name of the piece
 
-thinking off. Mask only.
+thinking off. Mask only. Place comes later, on the calibrated cove.

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>JM Studio — ceramic stills</title>
   <style>
-    :root { --ink:#0a0a0a; --gold:#c4a35a; --rust:#8a4a22; --mute:#8a8a8a; }
+    :root { --ink:#0a0a0a; --gold:#c4a35a; --rust:#8a4a22; --mute:#8a8a8a; --live:#39ff14; }
     * { box-sizing:border-box; margin:0; padding:0; }
     body { background:var(--ink); color:#f3f3f3; font-family:"Helvetica Neue",Helvetica,Arial,sans-serif; }
     header { padding:32px 32px 20px; border-bottom:1px solid rgba(255,255,255,.1); }
@@ -17,6 +17,11 @@
     .btn { background:#fff; color:#000; border:0; padding:12px 18px; font-size:11px; font-weight:700; letter-spacing:.16em; text-transform:uppercase; }
     .ghost { background:none; color:#fff; border:1px solid #fff; padding:12px 18px; font-size:11px; font-weight:700; letter-spacing:.16em; text-transform:uppercase; }
     .gold { background:none; color:var(--gold); border:1px solid var(--gold); padding:12px 18px; font-size:11px; font-weight:700; letter-spacing:.16em; text-transform:uppercase; }
+    button.on, .gold.on, .ghost.on {
+      color: var(--live);
+      border-color: var(--live);
+      box-shadow: 0 0 14px rgba(57,255,20,.55);
+    }
     .drop { margin:24px 32px; border:1px dashed rgba(255,255,255,.2); min-height:88px; display:flex; align-items:center; justify-content:center; color:var(--mute); cursor:pointer; }
     .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:12px; padding:0 32px 48px; }
     article { background:#111; border:1px solid rgba(255,255,255,.1); }

@@ -1,5 +1,4 @@
-/* Last good engine (62c2cc8) with paintSit disabled.
-   Real foot + real shadow stay via keepFoot. No drawn ellipse. */
+/* Last good engine (62c2cc8). Fake ellipse off. Real foot shadow stays. */
 (function loadStudio() {
   const SRC = "https://cdn.jsdelivr.net/gh/moriphoto/studio-stills@62c2cc8b2bcad7c295651534e608064c966eff05/studio.js";
   const xhr = new XMLHttpRequest();
@@ -10,7 +9,8 @@
   }
   const code = xhr.responseText.replace(
     /function paintSit\s*\([^)]*\)\s*\{[\s\S]*?\n\}/,
-    "function paintSit(){ /* no fake shadow */ }"
+    "function paintSit(){}"
   );
   (0, eval)(code);
+  window.paintSit = function paintSit() {};
 })();

@@ -1,4 +1,8 @@
-/* JM Studio — cut ceramic, sit on 1920x1080 cove */
+/* JM Studio
+   1. Cut the ceramic from the photo
+   2. Sit it on studio-ground.jpg
+   3. Grade toward studio-tone.jpg (the PXL look)
+*/
 const W = 1920, H = 1080, FEATHER = 18;
 const items = [];
 let groupUrl = null;
@@ -24,7 +28,11 @@ function loadImageFile(src) {
 }
 
 async function loadAssets() {
-  try { groundEl = await loadImageFile("studio-ground.jpg"); } catch (e) { groundEl = null; }
+  try {
+    groundEl = await loadImageFile("studio-ground.jpg");
+  } catch (e) {
+    groundEl = null;
+  }
   try {
     const img = await loadImageFile("studio-tone.jpg");
     const c = document.createElement("canvas");
@@ -41,11 +49,18 @@ async function loadAssets() {
       r += d[i]; g += d[i+1]; b += d[i+2]; n++;
     }
     if (n > 80) tone = { l: (0.2126*r+0.7152*g+0.0722*b)/n, r:r/n, g:g/n, b:b/n };
-  } catch (e) {}
+  } catch (e) { /* keep defaults */ }
 }
 
 function plateRgb(t) {
-  const stops = [[0,0,0,0],[0.22,5,5,5],[0.42,26,26,26],[0.62,106,106,106],[0.82,228,228,228],[1,255,255,255]];
+  const stops = [
+    [0, 0, 0, 0],
+    [0.22, 5, 5, 5],
+    [0.42, 26, 26, 26],
+    [0.62, 106, 106, 106],
+    [0.82, 228, 228, 228],
+    [1, 255, 255, 255],
+  ];
   let i = 0;
   while (i < stops.length - 1 && t > stops[i + 1][0]) i++;
   const a = stops[i], b = stops[i + 1];
@@ -93,6 +108,44 @@ function trimBars(img) {
   return out;
 }
 
+function peelFrame(img) {
+  const w = img.width, h = img.height;
+  if (w / h < 1.45) return img;
+  const src = document.createElement("canvas");
+  src.width = w; src.height = h;
+  const ctx = src.getContext("2d", { willReadFrequently: true });
+  ctx.drawImage(img, 0, 0);
+  const d = ctx.getImageData(0, 0, w, h).data;
+  let minX = w, minY = h, maxX = 0, maxY = 0, n = 0;
+  for (let y = 0; y < h; y += 2) {
+    const [pr, pg, pb] = plateRgb(y / Math.max(1, h - 1));
+    for (let x = 0; x < w; x += 2) {
+      const p = (y * w + x) * 4;
+      if (dist(d[p], d[p + 1], d[p + 2], pr, pg, pb) > 32) {
+        n++;
+        if (x < minX) minX = x;
+        if (y < minY) minY = y;
+        if (x > maxX) maxX = x;
+        if (y > maxY) maxY = y;
+      }
+    }
+  }
+  const bw = maxX - minX + 1, bh = maxY - minY + 1;
+  if (n < 80 || bw < 48 || bh < 48) return img;
+  if (bw > w * 0.92 && bh > h * 0.92) return img;
+  const padX = Math.max(8, Math.round(bw * 0.04));
+  const padY = Math.max(8, Math.round(bh * 0.04));
+  minX = Math.max(0, minX - padX);
+  minY = Math.max(0, minY - padY);
+  maxX = Math.min(w - 1, maxX + padX);
+  maxY = Math.min(h - 1, maxY + padY);
+  const out = document.createElement("canvas");
+  out.width = maxX - minX + 1;
+  out.height = maxY - minY + 1;
+  out.getContext("2d").drawImage(src, minX, minY, out.width, out.height, 0, 0, out.width, out.height);
+  return out;
+}
+
 function blurAlpha(alpha, w, h, passes) {
   for (let p = 0; p < passes; p++) {
     const copy = alpha.slice();
@@ -100,14 +153,15 @@ function blurAlpha(alpha, w, h, passes) {
       for (let x = 1; x < w - 1; x++) {
         const i = y * w + x;
         if (copy[i] === 255) continue;
-        alpha[i] = (copy[i] + copy[i - 1] + copy[i + 1] + copy[i - w] + copy[i + w]) / 5;
+        const n = (copy[i] + copy[i - 1] + copy[i + 1] + copy[i - w] + copy[i + w]) / 5;
+        alpha[i] = n;
       }
     }
   }
 }
 
 function cutPot(img, tol) {
-  img = trimBars(img);
+  img = peelFrame(trimBars(img));
   let scale = 820 / img.height;
   if (img.width * scale > 1100) scale = 1100 / img.width;
   const w = Math.max(2, Math.round(img.width * scale));
@@ -162,8 +216,10 @@ function cutPot(img, tol) {
     }
   }
   if (potN < w * h * 0.02 || maxX < minX) {
-    minX = Math.floor(w * 0.12); minY = Math.floor(h * 0.12);
-    maxX = Math.floor(w * 0.88); maxY = Math.floor(h * 0.88);
+    minX = Math.floor(w * 0.12);
+    minY = Math.floor(h * 0.12);
+    maxX = Math.floor(w * 0.88);
+    maxY = Math.floor(h * 0.88);
   }
   const footY = minY + (maxY - minY) * 0.62;
   const alpha = new Uint8ClampedArray(w * h);
@@ -184,7 +240,8 @@ function cutPot(img, tol) {
       const pr = top[0] + (bot[0] - top[0]) * t;
       const pg = top[1] + (bot[1] - top[1]) * t;
       const pb = top[2] + (bot[2] - top[2]) * t;
-      if (L < luma(pr, pg, pb) - 10) {
+      const plateL = luma(pr, pg, pb);
+      if (L < plateL - 10) {
         const fade = 1 - (distPx - FEATHER) / (apron - FEATHER);
         alpha[i] = Math.round(200 * fade * fade);
         continue;
@@ -236,8 +293,10 @@ function frameStill(img, tolerance, contrast) {
   const dh = bb.h * scale;
   const dx = (W - dw) / 2;
   const dy = H * 0.86 - dh;
+
   const out = document.createElement("canvas");
-  out.width = W; out.height = H;
+  out.width = W;
+  out.height = H;
   const ctx = out.getContext("2d");
   paintPlate(ctx);
   ctx.save();
@@ -297,11 +356,13 @@ function addFiles(list){
   const picked = Array.from(list).filter(isStill).slice(0,20);
   if (!picked.length) { status("No JPEGs in that drop."); return; }
   picked.forEach(file => {
-    items.push({ name: file.name.replace(/\.[^.]+$/,""), file, url: URL.createObjectURL(file), selected: true });
+    const name = file.name.replace(/\.[^.]+$/,"");
+    items.push({ name, file, url: URL.createObjectURL(file), selected: true });
   });
   if (items.length > 20) items.length = 20;
   render();
-  status(picked.length + " added. Process all when ready.");
+  const framed = picked.some(f => /-1920/i.test(f.name));
+  status(picked.length + " added. Process all when ready." + (framed ? " Tip: use the original phone JPEG, not a -1920." : ""));
 }
 
 document.getElementById("files").onchange = e => { addFiles(e.target.files); e.target.value = ""; };
@@ -339,7 +400,10 @@ document.getElementById("run").onclick = async () => {
       render();
       const hero = document.getElementById("hero");
       const wrap = document.getElementById("heroWrap");
-      if (hero && wrap) { wrap.hidden = false; hero.src = items[i].processedUrl; }
+      if (hero && wrap) {
+        wrap.hidden = false;
+        hero.src = items[i].processedUrl;
+      }
     }
     status("Done — each file is 1920 × 1080.");
   } catch (err) {

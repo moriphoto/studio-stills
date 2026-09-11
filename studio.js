@@ -311,6 +311,92 @@ function hardenMask(canvas) {
   ctx.putImageData(image, 0, 0);
 }
 
+function hardenMask(canvas) {
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
+  const image = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const d = image.data, w = canvas.width, h = canvas.height;
+  const strength = Number(document.getElementById("mask") && document.getElementById("mask").value || 72);
+  const lo = 50 + strength * 0.9;
+  const span = 90;
+  const a = new Uint8ClampedArray(w * h);
+  for (let i = 0; i < w * h; i++) {
+    const v = d[i * 4 + 3];
+    a[i] = v < lo ? 0 : v < lo + span ? Math.round((v - lo) * 255 / span) : 255;
+  }
+  const bbGuess = { y: 0, h: h };
+  let minY = h, maxY = 0;
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    if (a[y * w + x] > 18) { if (y < minY) minY = y; if (y > maxY) maxY = y; }
+  }
+  const footLine = minY + (maxY - minY) * 0.8;
+  for (let pass = 0; pass < 2; pass++) {
+    const copy = a.slice();
+    for (let y = 1; y < h - 1; y++) {
+      if (y >= footLine) continue;
+      for (let x = 1; x < w - 1; x++) {
+        const i = y * w + x;
+        a[i] = Math.min(copy[i], copy[i - 1], copy[i + 1], copy[i - w], copy[i + w]);
+      }
+    }
+  }
+  const copy = a.slice();
+  for (let y = 1; y < h - 1; y++) {
+    for (let x = 1; x < w - 1; x++) {
+      const i = y * w + x;
+      if (copy[i] === 255 || copy[i] === 0) continue;
+      a[i] = (copy[i] + copy[i - 1] + copy[i + 1] + copy[i - w] + copy[i + w]) / 5;
+    }
+  }
+  for (let i = 0; i < w * h; i++) d[i * 4 + 3] = a[i];
+  ctx.putImageData(image, 0, 0);
+}
+
+function matchSize(src, w, h) {
+  if (src.width === w && src.height === h) return src;
+  const c = document.createElement("canvas");
+  c.width = w; c.height = h;
+  c.getContext("2d").drawImage(src, 0, 0, w, h);
+  return c;
+}
+
+function keepFoot(cutCanvas, origImg, footPct) {
+  footPct = Number(footPct);
+  if (!origImg || footPct < 2) return;
+  const w = cutCanvas.width, h = cutCanvas.height;
+  const orig = matchSize(origImg, w, h);
+  const ctx = cutCanvas.getContext("2d", { willReadFrequently: true });
+  const cut = ctx.getImageData(0, 0, w, h);
+  const od = orig.getContext("2d", { willReadFrequently: true }).getImageData(0, 0, w, h).data;
+  const d = cut.data;
+  const bb = bboxFromAlpha(cutCanvas);
+  const pad = bb.w * (0.06 + footPct / 500);
+  const strip = Math.max(10, (footPct / 100) * Math.max(24, bb.h * 0.5));
+  const y0 = Math.floor(bb.y + bb.h * 0.72);
+  const y1 = Math.min(h - 1, Math.ceil(bb.y + bb.h + strip));
+  const x0 = Math.max(0, Math.floor(bb.x - pad));
+  const x1 = Math.min(w - 1, Math.ceil(bb.x + bb.w + pad));
+  const cx0 = bb.x + bb.w / 2;
+  const rx = bb.w / 2 + pad;
+  for (let y = y0; y <= y1; y++) {
+    const v = (y - y0) / Math.max(1, y1 - y0);
+    const fade = Math.pow(1 - v, 1.55);
+    for (let x = x0; x <= x1; x++) {
+      const i = (y * w + x) * 4;
+      if (d[i + 3] > 210) continue;
+      const horiz = Math.max(0, 1 - Math.pow((x - cx0) / rx, 2));
+      const keep = fade * horiz;
+      if (keep < 0.05) continue;
+      const oa = Math.round(keep * 200);
+      if (oa <= d[i + 3]) continue;
+      d[i] = od[i];
+      d[i + 1] = od[i + 1];
+      d[i + 2] = od[i + 2];
+      d[i + 3] = oa;
+    }
+  }
+  ctx.putImageData(cut, 0, 0);
+}
+
 function bboxFromAlpha(canvas) {
   const ctx = canvas.getContext("2d", { willReadFrequently: true });
   const image = ctx.getImageData(0, 0, canvas.width, canvas.height);
@@ -328,8 +414,9 @@ function bboxFromAlpha(canvas) {
   return { x: minX, y: minY, w: maxX - minX + 1, h: maxY - minY + 1 };
 }
 
-function placeOnPlate(cutCanvas, contrast) {
+function placeOnPlate(cutCanvas, contrast, origImg) {
   hardenMask(cutCanvas);
+  keepFoot(cutCanvas, origImg, document.getElementById("foot") && document.getElementById("foot").value);
   gradeCut(cutCanvas, contrast || 1.1);
   const bb = bboxFromAlpha(cutCanvas);
   const maxW = W * 0.78;
@@ -343,36 +430,41 @@ function placeOnPlate(cutCanvas, contrast) {
   out.width = W; out.height = H;
   const ctx = out.getContext("2d");
   paintPlate(ctx);
-  ctx.save();
-  ctx.filter = "blur(22px)";
-  ctx.fillStyle = "rgba(0,0,0,0.18)";
-  ctx.beginPath();
-  ctx.ellipse(dx + dw * 0.52, dy + dh - 4, dw * 0.4, Math.max(12, dh * 0.055), 0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.restore();
+  const foot = Number(document.getElementById("foot") && document.getElementById("foot").value || 0);
+  if (foot < 18) {
+    ctx.save();
+    ctx.filter = "blur(22px)";
+    ctx.fillStyle = "rgba(0,0,0,0.18)";
+    ctx.beginPath();
+    ctx.ellipse(dx + dw * 0.52, dy + dh - 4, dw * 0.4, Math.max(12, dh * 0.055), 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
   ctx.drawImage(cutCanvas, bb.x, bb.y, bb.w, bb.h, dx, dy, dw, dh);
   return { canvas: out, photo: cutCanvas, bbox: { x: dx, y: dy, w: dw, h: dh }, meanLuma: tone.l, width: out.width, height: out.height };
 }
 
 async function cutFromFile(file, t, c, onStatus) {
+  const orig = await loadImage(file);
   const wantAI = document.getElementById("ai") && document.getElementById("ai").checked;
   if (wantAI && typeof window.cutWithAI === "function") {
     try {
-      onStatus("AI cutting… first time downloads a model (~40MB).");
-      const rgba = await window.cutWithAI(file, onStatus);
-      return placeOnPlate(rgba, c);
+      onStatus("AI cutting… first time downloads a model (~50MB).");
+      let rgba = await window.cutWithAI(file, onStatus);
+      rgba = matchSize(rgba, orig.width, orig.height);
+      return placeOnPlate(rgba, c, orig);
     } catch (err) {
       onStatus("AI skipped: " + (err && err.message ? err.message : "using paper match"));
     }
   }
-  const img = await loadImage(file);
-  return frameStill(img, t, c);
+  return frameStill(orig, t, c);
 }
 
 function frameStill(img, tolerance, contrast) {
   tolerance = tolerance || 64;
   contrast = contrast || 1.1;
   const cut = cutPot(img, tolerance);
+  keepFoot(cut.canvas, img, document.getElementById("foot") && document.getElementById("foot").value);
   gradeCut(cut.canvas, contrast);
   const bb = cut.bbox;
   const maxW = W * 0.78;
@@ -457,6 +549,10 @@ function addFiles(list){
 document.getElementById("files").onchange = e => { addFiles(e.target.files); e.target.value = ""; };
 document.getElementById("tol").oninput = e => { document.getElementById("tolv").textContent = e.target.value; };
 document.getElementById("con").oninput = e => { document.getElementById("conv").textContent = (Number(e.target.value)/100).toFixed(2); };
+["mask","foot"].forEach(id => {
+  const el = document.getElementById(id);
+  if (el) el.oninput = e => { const v = document.getElementById(id + "v"); if (v) v.textContent = e.target.value; };
+});
 const drop = document.getElementById("drop");
 drop.onclick = () => document.getElementById("files").click();
 drop.ondragover = e => e.preventDefault();

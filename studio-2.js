@@ -52,6 +52,31 @@ function hardenMask(canvas, strength) {
   ctx.putImageData(image, 0, 0);
 }
 
+function featherEdge(canvas, radius) {
+  radius = Math.max(0, Math.round(Number(radius) || 0));
+  if (radius < 1) return;
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
+  const w = canvas.width, h = canvas.height;
+  const image = ctx.getImageData(0, 0, w, h);
+  const d = image.data;
+  let a = new Float32Array(w * h);
+  for (let i = 0; i < w * h; i++) a[i] = d[i * 4 + 3];
+  const passes = Math.min(8, radius);
+  for (let p = 0; p < passes; p++) {
+    const n = new Float32Array(a);
+    for (let y = 1; y < h - 1; y++) {
+      for (let x = 1; x < w - 1; x++) {
+        const i = y * w + x;
+        if (a[i] > 248) { n[i] = a[i]; continue; }
+        n[i] = (a[i] + a[i - 1] + a[i + 1] + a[i - w] + a[i + w]) / 5;
+      }
+    }
+    a = n;
+  }
+  for (let i = 0; i < w * h; i++) d[i * 4 + 3] = a[i];
+  ctx.putImageData(image, 0, 0);
+}
+
 function toCanvas(src, w, h) {
   const c = document.createElement("canvas");
   c.width = w || src.width;
@@ -154,8 +179,11 @@ function paintExtendedCove(ctx, img) {
 }
 
 function composeIntact(cutCanvas, origImg) {
+  const s = readSettings();
   hardenMask(cutCanvas, 68);
   keepFoot(cutCanvas, origImg, 72);
+  featherEdge(cutCanvas, s.edge);
+  gradeCut(cutCanvas, s.enhance);
   const fit = fitContain(origImg.width, origImg.height, W, H);
   const out = document.createElement("canvas");
   out.width = W; out.height = H;
@@ -205,8 +233,8 @@ function forceFrame(cut) {
   ctx.imageSmoothingQuality = "high";
   paintPlate(ctx);
   if (src && src.width && src.height) {
-    const s = Math.min(W / src.width, H / src.height);
-    const dw = src.width * s, dh = src.height * s;
+    const sc = Math.min(W / src.width, H / src.height);
+    const dw = src.width * sc, dh = src.height * sc;
     ctx.drawImage(src, (W - dw) / 2, (H - dh) / 2, dw, dh);
   }
   return { canvas: out, photo: cut && cut.photo || out, bbox: { x: 0, y: 0, w: W, h: H }, meanLuma: tone.l, width: W, height: H };

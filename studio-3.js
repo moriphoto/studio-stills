@@ -27,6 +27,10 @@ function addFiles(list){
 }
 
 document.getElementById("files").onchange = e => { addFiles(e.target.files); e.target.value = ""; };
+const enhance = document.getElementById("enhance");
+if (enhance) enhance.oninput = e => { const v = document.getElementById("enhancev"); if (v) v.textContent = (Number(e.target.value)/100).toFixed(2); };
+const edge = document.getElementById("edge");
+if (edge) edge.oninput = e => { const v = document.getElementById("edgev"); if (v) v.textContent = e.target.value; };
 const drop = document.getElementById("drop");
 drop.onclick = () => document.getElementById("files").click();
 drop.ondragover = e => e.preventDefault();
@@ -52,7 +56,7 @@ document.getElementById("run").onclick = async () => {
     await assetsReady;
     window.autoCove = true;
     for (let i=0;i<items.length;i++){
-      const s = items[i].settings || bar;
+      const s = bar;
       status("Cutting " + (i+1) + " of " + items.length + "…");
       await new Promise(r => setTimeout(r, 20));
       try {

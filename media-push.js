@@ -61,7 +61,7 @@
     var url = GIT + "/contents/" + path;
     var sha;
     try {
-      var prev = await fetch(url + "?ref=" + BRANCH, { headers: headers(t) });
+      var prev = await fetch(url + "?ref=" + BRANCH, { headers: headers(t), credentials: "include", mode: "cors" });
       if (prev.ok) {
         var j = await prev.json();
         sha = j.sha;
@@ -69,7 +69,7 @@
     } catch (e) {}
     var body = { message: message, content: b64, branch: BRANCH };
     if (sha) body.sha = sha;
-    var res = await fetch(url, { method: "PUT", headers: headers(t), body: JSON.stringify(body) });
+    var res = await fetch(url, { method: "PUT", headers: headers(t), body: JSON.stringify(body), credentials: "include", mode: "cors" });
     if (!res.ok) {
       var txt = await res.text();
       throw new Error(res.status + " " + txt.slice(0, 180));

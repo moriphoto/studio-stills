@@ -5,6 +5,7 @@
   let dark = null;
   let light = null;
   let plateCanvas = null;
+  let colourOn = false;
   function $(id) { return document.getElementById(id); }
   function markLive(on) {
     ["calUse", "calibrate"].forEach(function (id) {
@@ -98,6 +99,38 @@
     const picked = items.filter(function (it) { return it.selected !== false; });
     return picked[0] || items[0] || null;
   }
+  function samplePx(img, x, y) {
+    const c = document.createElement("canvas");
+    c.width = img.width; c.height = img.height;
+    const ctx = c.getContext("2d", { willReadFrequently: true });
+    ctx.drawImage(img, 0, 0);
+    const r = 10;
+    const x0 = Math.max(0, Math.round(x) - r);
+    const y0 = Math.max(0, Math.round(y) - r);
+    const x1 = Math.min(img.width, Math.round(x) + r + 1);
+    const y1 = Math.min(img.height, Math.round(y) + r + 1);
+    const data = ctx.getImageData(x0, y0, x1 - x0, y1 - y0).data;
+    let R = 0, G = 0, B = 0, n = 0;
+    for (let i = 0; i < data.length; i += 4) { R += data[i]; G += data[i + 1]; B += data[i + 2]; n++; }
+    return { r: R / n, g: G / n, b: B / n, y: y / img.height };
+  }
+  function topStop() {
+    if (colourOn && $("calTop")) return hexRgb($("calTop").value, 0);
+    if (!srcImg || !srcImg.width) return hexRgb("#1a1a1a", 0);
+    return samplePx(srcImg, srcImg.width * 0.5, srcImg.height * 0.06);
+  }
+  function setColourOn(on) {
+    colourOn = !!on;
+    const btn = $("calColorOn");
+    const wrap = $("calTopWrap");
+    if (btn) btn.classList.toggle("on", colourOn);
+    if (wrap) wrap.hidden = !colourOn;
+    if (light) {
+      dark = topStop();
+      rebuildFromStops();
+    }
+    status(colourOn ? "Top colour on. Pick a swatch, then click the floor." : "Top colour off. Use this plate, or click the floor.");
+  }
   function restorePlate() {
     try {
       const data = localStorage.getItem("cove-plate");
@@ -114,10 +147,10 @@
     $("cal").hidden = false;
     $("calSrc").src = item.url;
     step = 1;
-    dark = hexRgb($("calTop") && $("calTop").value || "#000000", 0);
     light = null;
+    dark = null;
     srcImg = new Image();
-    srcImg.onload = function () { status("Top is the circle. Click the floor in the still."); };
+    srcImg.onload = function () { status(colourOn ? "Pick a top colour, then click the floor." : "Use this plate, or click the floor."); };
     srcImg.src = item.url;
     if (plateCanvas || groundEl) previewPlate();
   }
@@ -125,33 +158,22 @@
     if (!srcImg || !srcImg.width) return;
     const sw = sample(srcImg, e.clientX, e.clientY, $("calSrc"));
     light = sw; step = 2;
-    dark = hexRgb($("calTop") && $("calTop").value || "#000000", 0);
+    dark = topStop();
     rebuildFromStops();
   }
   restorePlate();
   if ($("calibrate")) $("calibrate").onclick = openCal;
   if ($("calSrc")) $("calSrc").onclick = onPick;
+  if ($("calColorOn")) $("calColorOn").onclick = function () { setColourOn(!colourOn); };
   if ($("calTop")) $("calTop").oninput = function () {
+    if (!colourOn) return;
     dark = hexRgb(this.value, 0);
     if (light) rebuildFromStops();
-  };
-  if ($("calSkipTop")) $("calSkipTop").onclick = function () {
-    if ($("calTop")) $("calTop").value = "#000000";
-    dark = hexRgb("#000000", 0);
-    if (light) rebuildFromStops();
-    status("Top is black. Click the floor if you have not yet.");
   };
   if ($("calUse")) $("calUse").onclick = function () {
     if (plateCanvas) applyPlate(plateCanvas, window.coveFloor);
     else if (groundEl) { markLive(true); window.plateLocked = true; previewPlate(); status("Plate locked."); }
-    else status("Set the top circle, then click the floor.");
-  };
-  if ($("calDl")) $("calDl").onclick = function () {
-    if (!groundEl) return;
-    const c = document.createElement("canvas");
-    c.width = 1920; c.height = 1080;
-    c.getContext("2d").drawImage(groundEl, 0, 0, 1920, 1080);
-    c.toBlob(function (b) { if (b) download(b, "studio-ground.jpg"); }, "image/jpeg", 0.95);
+    else status("Click the floor, or use this plate.");
   };
   if ($("calClose")) $("calClose").onclick = function () { $("cal").hidden = true; };
 })();

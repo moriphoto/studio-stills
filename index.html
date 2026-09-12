@@ -76,18 +76,17 @@
   <div class="drop" id="drop">Drop original JPEGs. Tick thumbs. Calibrate. Process.</div>
   <section id="cal" hidden>
     <p class="k">Calibrate</p>
-    <p class="lead">Top colour is optional — leave black if the cove is already right. Then click the floor in the still.</p>
+    <p class="lead">Use this plate as it is. Turn Top colour on only if you want to tint the cove. Then click the floor.</p>
     <div class="cal-opt">
-      <label class="t">Top colour <input id="calTop" type="color" value="#000000" title="Top of the cove"></label>
-      <button type="button" class="ghost" id="calSkipTop">Leave black</button>
+      <button type="button" class="ghost" id="calColorOn">Top colour</button>
+      <label class="t" id="calTopWrap" hidden>Colour <input id="calTop" type="color" value="#1a1a1a" title="Top of the cove"></label>
     </div>
     <p class="k">Click the floor in this still</p>
     <div class="row">
       <div><img id="calSrc" alt="Pick floor"></div>
       <div id="calPrevWrap" hidden>
         <img id="calPrev" alt="Plate">
-        <button class="gold" id="calDl" style="margin-top:12px">Download studio-ground.jpg</button>
-        <button class="ghost" id="calUse" style="margin-top:12px">Use this plate</button>
+        <button class="gold" id="calUse" style="margin-top:12px">Use this plate</button>
         <button class="ghost" id="calClose" style="margin-top:12px">Close</button>
       </div>
     </div>

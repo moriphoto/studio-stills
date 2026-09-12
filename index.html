@@ -31,7 +31,10 @@
     .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:10px; padding:0 24px 40px; }
     article { background:#111; border:1px solid rgba(255,255,255,.1); }
     article img { width:100%; aspect-ratio:16/9; object-fit:contain; background:#000; display:block; }
-    article .m { padding:8px; font-size:11px; }
+    article .m { padding:8px; font-size:11px; display:flex; align-items:center; gap:8px; }
+    article .pick { flex:1; display:flex; align-items:center; gap:6px; color:#ccc; min-width:0; overflow:hidden; }
+    article .kill { margin-left:auto; background:none; border:0; color:#8a8a8a; font-size:16px; line-height:1; padding:0 4px; cursor:pointer; }
+    article .kill:hover { color:#ff5a5a; }
     #status { color:var(--gold); font-size:13px; }
     #files { color:#8a8a8a; font-size:12px; max-width:16rem; }
     label.t { font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:var(--mute); display:flex; gap:8px; align-items:center; }
@@ -57,7 +60,7 @@
   <header>
     <p class="k">John Mackenzie Ceramics</p>
     <h1>Studio stills</h1>
-    <p class="lead">Wand restores the original. Disc paints a soft shadow mask.</p>
+    <p class="lead">Red target restores glaze. Green target paints shadow. Tick and delete on the thumbs.</p>
   </header>
   <div class="bar">
     <label class="btn" for="files">Add JPEGs</label>
@@ -67,23 +70,18 @@
     <label class="t"><input type="radio" name="res" id="resHigh"> High (upload)</label>
     <label class="t">Enhance <input id="enhance" type="range" min="100" max="130" value="108"> <span id="enhancev">1.08</span></label>
     <label class="t">Blend edge <input id="edge" type="range" min="0" max="20" value="10"> <span id="edgev">10</span></label>
-    <button class="ghost icon" id="magic" title="Magic — restore original" aria-label="Magic restore">
-      <svg viewBox="0 0 24 24"><path d="M4 20 L14 10"/><path d="M14 10 l2-6 2 4 4 1-4 2-2 5z"/><path d="M7 7 h.01 M5 4 h.01 M3 8 h.01"/></svg>
+    <button class="ghost icon" id="magic" title="Magic — restore object" aria-label="Magic restore">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"/><path d="M12 3 v3 M12 18 v3 M3 12 h3 M18 12 h3"/></svg>
     </button>
     <button class="ghost icon" id="shBrush" title="Shadow brush" aria-label="Shadow brush">
       <svg viewBox="0 0 24 24"><ellipse cx="12" cy="16" rx="8" ry="3"/><path d="M8 15 c1-6 7-6 8 0"/></svg>
     </button>
-    <label class="t">Shadow
-      <button type="button" class="ghost" id="shL">←</button>
-      <button type="button" class="ghost on" id="shC">·</button>
-      <button type="button" class="ghost" id="shR">→</button>
-    </label>
     <button class="ghost" id="run">Process all</button>
     <button class="ghost" id="reset">Reset</button>
     <button class="ghost" id="dl">Download singles</button>
     <span id="status"></span>
   </div>
-  <div class="drop" id="drop">Drop original JPEGs. Calibrate. Point the shadow. Process all.</div>
+  <div class="drop" id="drop">Drop original JPEGs. Calibrate. Process. Paint with the targets.</div>
   <section id="cal" hidden>
     <p class="k">Calibration — click dark top, then light floor</p>
     <div class="row">
@@ -109,6 +107,7 @@
   <script src="studio-soft.js"></script>
   <script src="studio-3.js"></script>
   <script src="studio-layers.js"></script>
+  <script src="studio-ui.js"></script>
   <script src="studio-cal.js"></script>
   <script src="admin-bridge.js"></script>
   <script type="module" src="ai-cut.js"></script>

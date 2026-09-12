@@ -1,0 +1,67 @@
+function makeTargetCursor(color) {
+  const c = document.createElement("canvas");
+  c.width = 32; c.height = 32;
+  const x = c.getContext("2d");
+  x.strokeStyle = color;
+  x.lineWidth = 1.4;
+  x.beginPath(); x.arc(16, 16, 10, 0, Math.PI * 2); x.stroke();
+  x.beginPath(); x.moveTo(16, 3); x.lineTo(16, 29); x.moveTo(3, 16); x.lineTo(29, 16); x.stroke();
+  x.beginPath(); x.arc(16, 16, 1.2, 0, Math.PI * 2); x.fillStyle = color; x.fill();
+  return "url(" + c.toDataURL() + ") 16 16, crosshair";
+}
+const CURSOR_MAGIC = makeTargetCursor("#ff3b3b");
+const CURSOR_SHADOW = makeTargetCursor("#39ff14");
+
+function toolCursor() {
+  const hero = document.getElementById("hero");
+  if (!hero) return;
+  if (window.magicOn) hero.style.cursor = CURSOR_MAGIC;
+  else if (window.shadowBrushOn) hero.style.cursor = CURSOR_SHADOW;
+  else hero.style.cursor = "default";
+}
+
+function render() {
+  const grid = document.getElementById("grid");
+  grid.innerHTML = "";
+  items.forEach((item, idx) => {
+    const el = document.createElement("article");
+    el.style.cursor = "pointer";
+    if (item === activeItem) el.style.outline = "1px solid #39ff14";
+    el.innerHTML =
+      "<img src=\"" + (item.processedUrl || item.url) + "\" alt=\"\">" +
+      "<div class=\"m\">" +
+      "<label class=\"pick\"><input type=\"checkbox\" " + (item.selected !== false ? "checked" : "") + "> " + item.name + "</label>" +
+      "<button type=\"button\" class=\"kill\" title=\"Delete\">×</button>" +
+      "</div>";
+    el.querySelector("img").onclick = function () { showHero(item); render(); };
+    el.querySelector("input").onchange = function (e) {
+      e.stopPropagation();
+      item.selected = e.target.checked;
+    };
+    el.querySelector(".kill").onclick = function (e) {
+      e.stopPropagation();
+      items.splice(idx, 1);
+      if (activeItem === item) activeItem = items[0] || null;
+      if (activeItem) showHero(activeItem);
+      else {
+        const wrap = document.getElementById("heroWrap");
+        if (wrap) wrap.hidden = true;
+      }
+      render();
+    };
+    grid.appendChild(el);
+  });
+}
+
+document.getElementById("dl").onclick = async () => {
+  let n = 0;
+  for (const item of items) {
+    if (!item.framed) continue;
+    if (item.selected === false) continue;
+    const tag = item.framed.width + "x" + item.framed.height;
+    download(await toBlob(item.framed), item.name + "-" + tag + ".jpg");
+    n++;
+    await new Promise(r => setTimeout(r, 250));
+  }
+  if (!n) status("Tick a processed still, then download.");
+};

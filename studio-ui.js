@@ -108,3 +108,58 @@ document.getElementById("dl").onclick = async () => {
   }
   if (!n) status("Tick a processed still, then download.");
 };
+
+function packStamp() {
+  const d = new Date();
+  const p = function (n) { return String(n).padStart(2, "0"); };
+  return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate());
+}
+
+function tickedFramed() {
+  return items.filter(function (it) { return it.framed && it.selected !== false; });
+}
+
+async function zipTicked(innerFolder, zipName) {
+  if (typeof JSZip === "undefined") throw new Error("Zip library did not load");
+  const picked = tickedFramed();
+  if (!picked.length) {
+    status("Tick processed stills first.");
+    return null;
+  }
+  const zip = new JSZip();
+  const folder = zip.folder(innerFolder);
+  for (let i = 0; i < picked.length; i++) {
+    const item = picked[i];
+    const tag = item.framed.width + "x" + item.framed.height;
+    const blob = await toBlob(item.framed);
+    folder.file(item.name + "-" + tag + ".jpg", blob);
+  }
+  const out = await zip.generateAsync({ type: "blob" });
+  const name = zipName || String(innerFolder).replace(/\//g, "-");
+  download(out, name + ".zip");
+  return picked.length;
+}
+
+const dlFolder = document.getElementById("dlFolder");
+if (dlFolder) dlFolder.onclick = async function () {
+  try {
+    const stamp = packStamp();
+    const n = await zipTicked("stills-" + stamp, "stills-" + stamp);
+    if (n) status(n + " stills in a folder zip. Unzip on the computer or phone.");
+  } catch (err) {
+    status("Folder zip failed: " + (err && err.message ? err.message : "error"));
+  }
+};
+
+const dlCeramics = document.getElementById("dlCeramics");
+if (dlCeramics) dlCeramics.onclick = async function () {
+  try {
+    const stamp = packStamp();
+    const n = await zipTicked("inbox/" + stamp, "inbox-" + stamp);
+    if (!n) return;
+    status(n + " stills packed as inbox/" + stamp + ". Unzip into images. Newest pack at the top in Media.");
+    window.open("https://moriphoto.github.io/jm-website/admin/media.html", "_blank", "noopener");
+  } catch (err) {
+    status("Ceramics pack failed: " + (err && err.message ? err.message : "error"));
+  }
+};

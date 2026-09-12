@@ -135,6 +135,12 @@
     dark = hexRgb(this.value, 0);
     if (light) rebuildFromStops();
   };
+  if ($("calSkipTop")) $("calSkipTop").onclick = function () {
+    if ($("calTop")) $("calTop").value = "#000000";
+    dark = hexRgb("#000000", 0);
+    if (light) rebuildFromStops();
+    status("Top is black. Click the floor if you have not yet.");
+  };
   if ($("calUse")) $("calUse").onclick = function () {
     if (plateCanvas) applyPlate(plateCanvas, window.coveFloor);
     else if (groundEl) { markLive(true); window.plateLocked = true; previewPlate(); status("Plate locked."); }

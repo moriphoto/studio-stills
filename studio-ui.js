@@ -153,13 +153,23 @@ if (dlFolder) dlFolder.onclick = async function () {
 
 const dlCeramics = document.getElementById("dlCeramics");
 if (dlCeramics) dlCeramics.onclick = async function () {
+  const picked = tickedFramed();
+  if (!picked.length) { status("Tick processed stills first."); return; }
+  const stamp = packStamp();
   try {
-    const stamp = packStamp();
-    const n = await zipTicked("inbox/" + stamp, "inbox-" + stamp);
-    if (!n) return;
-    status(n + " stills packed as inbox/" + stamp + ". Unzip into images. Newest pack at the top in Media.");
-    window.open("https://moriphoto.github.io/jm-website/admin/media.html", "_blank", "noopener");
+    if (typeof window.pushStillsToMedia === "function") {
+      const n = await window.pushStillsToMedia(picked, stamp, status);
+      status(n + " stills in Media / inbox/" + stamp + ". Choose them in the catalogue when you want.");
+      window.open("https://jmceramics.netlify.app/admin/#/collections/catalogue/entries/works", "_blank", "noopener");
+      return;
+    }
   } catch (err) {
-    status("Ceramics pack failed: " + (err && err.message ? err.message : "error"));
+    status("Direct send needs Admin login. Saving a folder zip instead. " + (err && err.message ? err.message : ""));
+  }
+  try {
+    const n = await zipTicked("inbox/" + stamp, "inbox-" + stamp);
+    if (n) window.open("https://moriphoto.github.io/jm-website/admin/media.html", "_blank", "noopener");
+  } catch (err2) {
+    status("Ceramics pack failed: " + (err2 && err2.message ? err2.message : "error"));
   }
 };

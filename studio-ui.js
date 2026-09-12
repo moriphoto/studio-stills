@@ -6,58 +6,44 @@ function makeTargetCursor(color) {
   x.lineWidth = 1.4;
   x.beginPath(); x.arc(16, 16, 10, 0, Math.PI * 2); x.stroke();
   x.beginPath(); x.moveTo(16, 3); x.lineTo(16, 29); x.moveTo(3, 16); x.lineTo(29, 16); x.stroke();
-  x.beginPath(); x.arc(16, 16, 1.2, 0, Math.PI * 2); x.fillStyle = color; x.fill();
+  x.fillStyle = color;
+  x.beginPath(); x.arc(16, 16, 1.2, 0, Math.PI * 2); x.fill();
   return "url(" + c.toDataURL() + ") 16 16, crosshair";
 }
-const CURSOR_MAGIC = makeTargetCursor("#3b82f6");
-const CURSOR_SHADOW = makeTargetCursor("#39ff14");
 const CURSOR_REMOVE = makeTargetCursor("#ff3b3b");
 
 function toolCursor() {
   const hero = document.getElementById("hero");
   if (!hero) return;
-  if (window.magicOn) hero.style.cursor = CURSOR_MAGIC;
-  else if (window.shadowBrushOn) hero.style.cursor = CURSOR_SHADOW;
-  else if (window.removeOn) hero.style.cursor = CURSOR_REMOVE;
-  else hero.style.cursor = "default";
+  hero.style.cursor = window.removeOn ? CURSOR_REMOVE : "default";
 }
 
+window.magicOn = false;
+window.shadowBrushOn = false;
 window.removeOn = false;
+
 function setTool(which) {
-  window.magicOn = which === "magic";
-  window.shadowBrushOn = which === "shadow";
   window.removeOn = which === "remove";
-  const m = document.getElementById("magic");
-  const s = document.getElementById("shBrush");
   const r = document.getElementById("rmBrush");
-  if (m) m.classList.toggle("on", window.magicOn);
-  if (s) s.classList.toggle("on", window.shadowBrushOn);
   if (r) r.classList.toggle("on", window.removeOn);
   toolCursor();
-  status(window.magicOn ? "Bring back on. Blue 30% preview. SET to bake." : window.shadowBrushOn ? "Shadow on. Green 30% preview. SET to bake." : window.removeOn ? "Remove on. Red 30% preview. SET to bake." : "Tools off.");
+  status(window.removeOn ? "Remove on. Paint the junk. SET bakes this still." : "Remove off.");
 }
-const magicBtn = document.getElementById("magic");
-if (magicBtn) magicBtn.onclick = function () { setTool(window.magicOn ? "" : "magic"); };
-const shBrushBtn = document.getElementById("shBrush");
-if (shBrushBtn) shBrushBtn.onclick = function () { setTool(window.shadowBrushOn ? "" : "shadow"); };
 const rmBtn = document.getElementById("rmBrush");
 if (rmBtn) rmBtn.onclick = function () { setTool(window.removeOn ? "" : "remove"); };
 const setBtn = document.getElementById("applyEdit");
 if (setBtn) setBtn.onclick = function () { setCleanup(activeItem); };
-
-function selectAll(on) {
+const selAll = document.getElementById("selAll");
+if (selAll) selAll.onclick = function () {
+  const on = !items.every(function (it) { return it.selected !== false; });
   items.forEach(function (it) { it.selected = on; });
   render();
-}
-const selAll = document.getElementById("selAll");
-if (selAll) selAll.onclick = function () { selectAll(true); };
-const selNone = document.getElementById("selNone");
-if (selNone) selNone.onclick = function () { selectAll(false); };
+};
 
 const heroEl = document.getElementById("hero");
 if (heroEl) {
   heroEl.onpointerdown = function (e) {
-    if (!activeItem || (!window.magicOn && !window.shadowBrushOn && !window.removeOn)) return;
+    if (!activeItem || !window.removeOn) return;
     e.preventDefault();
     const paint = function (ev) {
       const rect = heroEl.getBoundingClientRect();
@@ -65,9 +51,7 @@ if (heroEl) {
       const fh = activeItem.framed ? activeItem.framed.height : 1080;
       const x = (ev.clientX - rect.left) / rect.width * fw;
       const y = (ev.clientY - rect.top) / rect.height * fh;
-      if (window.magicOn) stampOriginal(activeItem, x, y);
-      else if (window.shadowBrushOn) stampShadow(activeItem, x, y);
-      else stampRemove(activeItem, x, y);
+      stampRemove(activeItem, x, y);
     };
     paint(e);
     const move = function (ev) { paint(ev); };
@@ -85,7 +69,6 @@ function render() {
   grid.innerHTML = "";
   items.forEach((item, idx) => {
     const el = document.createElement("article");
-    el.style.cursor = "pointer";
     if (item === activeItem) el.style.outline = "1px solid #39ff14";
     el.innerHTML =
       "<img src=\"" + (item.processedUrl || item.url) + "\" alt=\"\">" +

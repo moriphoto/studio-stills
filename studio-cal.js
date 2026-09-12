@@ -67,26 +67,27 @@
   }
   function applyPlate(canvas, floorY) {
     plateCanvas = canvas;
-    const img = new Image();
-    img.onload = function () {
-      groundEl = img;
-      window.autoCove = false;
-      window.coveFloor = typeof floorY === "number" ? Math.min(0.94, Math.max(0.8, floorY)) : 0.91;
-      try { localStorage.setItem("cove-plate", canvas.toDataURL("image/jpeg", 0.95)); } catch (e) {}
-      markLive(true);
-      status("Plate live. Process sits the cut on this cove.");
-    };
-    img.src = canvas.toDataURL("image/jpeg", 0.95);
-    if ($("calPrev")) $("calPrev").src = img.src;
+    groundEl = canvas;
+    window.plateLocked = true;
+    window.autoCove = false;
+    window.coveFloor = typeof floorY === "number" ? Math.min(0.94, Math.max(0.8, floorY)) : 0.91;
+    markLive(true);
+    try { localStorage.setItem("cove-plate", canvas.toDataURL("image/jpeg", 0.95)); } catch (e) {}
+    if ($("calPrev")) $("calPrev").src = canvas.toDataURL("image/jpeg", 0.92);
     if ($("calPrevWrap")) $("calPrevWrap").hidden = false;
     if ($("cal")) $("cal").hidden = false;
+    status("Plate locked. Process uses this cove.");
   }
   function restorePlate() {
     try {
       const data = localStorage.getItem("cove-plate");
       if (!data) return;
       const img = new Image();
-      img.onload = function () { groundEl = img; markLive(true); };
+      img.onload = function () {
+        groundEl = img;
+        window.plateLocked = true;
+        markLive(true);
+      };
       img.src = data;
     } catch (e) {}
   }
@@ -112,6 +113,7 @@
   if ($("calSrc")) $("calSrc").onclick = onPick;
   if ($("calUse")) $("calUse").onclick = function () {
     if (plateCanvas) applyPlate(plateCanvas, window.coveFloor);
+    else if (groundEl) { markLive(true); window.plateLocked = true; status("Plate locked. Process uses this cove."); }
     else status("Pick dark, then light.");
   };
   if ($("calDl")) $("calDl").onclick = function () {

@@ -1,4 +1,4 @@
-/* Two-pick cove. Dark top, light floor. That plate is the studio. */
+/* Two-pick cove. Dark top, light floor. Preview aims the contact. */
 (function () {
   let srcImg = null;
   let step = 0;
@@ -65,6 +65,27 @@
     o.drawImage(c, 0, 0, 1920, 1080);
     return out;
   }
+  function previewPlate() {
+    const src = plateCanvas || groundEl;
+    if (!src) return;
+    const c = document.createElement("canvas");
+    c.width = 1920; c.height = 1080;
+    const ctx = c.getContext("2d");
+    ctx.drawImage(src, 0, 0, 1920, 1080);
+    const dir = Number(window.shadowDir) || 0;
+    const cx = 960 + dir * 220;
+    const cy = 1080 * (window.coveFloor || 0.91);
+    ctx.save();
+    ctx.globalAlpha = 0.22;
+    ctx.fillStyle = "#1a1a1a";
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, 160 + Math.abs(dir) * 40, 28, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+    if ($("calPrev")) $("calPrev").src = c.toDataURL("image/jpeg", 0.9);
+    if ($("calPrevWrap")) $("calPrevWrap").hidden = false;
+  }
+  window.refreshShadowPreview = previewPlate;
   function applyPlate(canvas, floorY) {
     plateCanvas = canvas;
     groundEl = canvas;
@@ -73,10 +94,9 @@
     window.coveFloor = typeof floorY === "number" ? Math.min(0.94, Math.max(0.8, floorY)) : 0.91;
     markLive(true);
     try { localStorage.setItem("cove-plate", canvas.toDataURL("image/jpeg", 0.95)); } catch (e) {}
-    if ($("calPrev")) $("calPrev").src = canvas.toDataURL("image/jpeg", 0.92);
-    if ($("calPrevWrap")) $("calPrevWrap").hidden = false;
     if ($("cal")) $("cal").hidden = false;
-    status("Plate locked. Process uses this cove.");
+    previewPlate();
+    status("Plate locked. Arrow aims the contact. Process uses this cove.");
   }
   function restorePlate() {
     try {
@@ -100,6 +120,7 @@
     srcImg = new Image();
     srcImg.onload = function () { status("Click the dark top of the cove."); };
     srcImg.src = src;
+    if (plateCanvas || groundEl) previewPlate();
   }
   function onPick(e) {
     if (!srcImg || !srcImg.width) return;
@@ -113,7 +134,7 @@
   if ($("calSrc")) $("calSrc").onclick = onPick;
   if ($("calUse")) $("calUse").onclick = function () {
     if (plateCanvas) applyPlate(plateCanvas, window.coveFloor);
-    else if (groundEl) { markLive(true); window.plateLocked = true; status("Plate locked. Process uses this cove."); }
+    else if (groundEl) { markLive(true); window.plateLocked = true; previewPlate(); status("Plate locked."); }
     else status("Pick dark, then light.");
   };
   if ($("calDl")) $("calDl").onclick = function () {

@@ -22,6 +22,11 @@
       border-color: var(--live);
       box-shadow: 0 0 14px rgba(57,255,20,.55);
     }
+    .icon {
+      width:36px; height:36px; padding:0;
+      display:inline-flex; align-items:center; justify-content:center;
+    }
+    .icon svg { width:18px; height:18px; fill:none; stroke:currentColor; stroke-width:1.7; }
     .drop { margin:16px 24px; border:1px dashed rgba(255,255,255,.2); min-height:64px; display:flex; align-items:center; justify-content:center; color:var(--mute); cursor:pointer; }
     .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:10px; padding:0 24px 40px; }
     article { background:#111; border:1px solid rgba(255,255,255,.1); }
@@ -52,7 +57,7 @@
   <header>
     <p class="k">John Mackenzie Ceramics</p>
     <h1>Studio stills</h1>
-    <p class="lead">Tap a thumb. Magic and Shadow brush paint layer masks, then the still is rebuilt.</p>
+    <p class="lead">Wand restores the original. Disc paints a soft shadow mask.</p>
   </header>
   <div class="bar">
     <label class="btn" for="files">Add JPEGs</label>
@@ -62,9 +67,12 @@
     <label class="t"><input type="radio" name="res" id="resHigh"> High (upload)</label>
     <label class="t">Enhance <input id="enhance" type="range" min="100" max="130" value="108"> <span id="enhancev">1.08</span></label>
     <label class="t">Blend edge <input id="edge" type="range" min="0" max="20" value="10"> <span id="edgev">10</span></label>
-    <label class="t"><input type="checkbox" id="bringBack"> Bring back</label>
-    <button class="ghost" id="magic">Magic</button>
-    <button class="ghost" id="shBrush">Shadow brush</button>
+    <button class="ghost icon" id="magic" title="Magic — restore original" aria-label="Magic restore">
+      <svg viewBox="0 0 24 24"><path d="M4 20 L14 10"/><path d="M14 10 l2-6 2 4 4 1-4 2-2 5z"/><path d="M7 7 h.01 M5 4 h.01 M3 8 h.01"/></svg>
+    </button>
+    <button class="ghost icon" id="shBrush" title="Shadow brush" aria-label="Shadow brush">
+      <svg viewBox="0 0 24 24"><ellipse cx="12" cy="16" rx="8" ry="3"/><path d="M8 15 c1-6 7-6 8 0"/></svg>
+    </button>
     <label class="t">Shadow
       <button type="button" class="ghost" id="shL">←</button>
       <button type="button" class="ghost on" id="shC">·</button>

@@ -33,6 +33,7 @@ function setShadowDir(val, id) {
     const b = document.getElementById(k);
     if (b) b.classList.toggle("on", k === id);
   });
+  if (typeof window.refreshShadowPreview === "function") window.refreshShadowPreview();
   status("Shadow " + (val < 0 ? "left" : val > 0 ? "right" : "under") + ". Process again.");
 }
 const shL = document.getElementById("shL"); if (shL) shL.onclick = function () { setShadowDir(-1, "shL"); };

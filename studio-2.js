@@ -122,6 +122,7 @@ function toCanvas(src, w, h) {
 
 function keepShadow(cutCanvas, origImg) {
   if (!origImg) return;
+  const dir = Number(window.shadowDir) || 0;
   const w = cutCanvas.width, h = cutCanvas.height;
   const orig = toCanvas(origImg, w, h);
   const ctx = cutCanvas.getContext("2d", { willReadFrequently: true });
@@ -129,9 +130,11 @@ function keepShadow(cutCanvas, origImg) {
   const od = orig.getContext("2d", { willReadFrequently: true }).getImageData(0, 0, w, h).data;
   const d = cut.data;
   const bb = bboxFromAlpha(cutCanvas);
-  const R = Math.max(10, Math.round(bb.w * 0.06));
-  const y0 = Math.floor(bb.y + bb.h * 0.78);
-  const y1 = Math.min(h - 1, Math.ceil(bb.y + bb.h + R * 0.7));
+  const R = Math.max(12, Math.round(bb.w * (0.07 + Math.abs(dir) * 0.04)));
+  const y0 = Math.floor(bb.y + bb.h * 0.76);
+  const y1 = Math.min(h - 1, Math.ceil(bb.y + bb.h + R * 0.85));
+  const cx = bb.x + bb.w / 2 + dir * bb.w * 0.34;
+  const spread = Math.max(1, bb.w / 2 + R);
   for (let y = y0; y <= y1; y++) {
     const fade = 1 - (y - y0) / Math.max(1, y1 - y0);
     let paper = 0, pn = 0;
@@ -144,16 +147,18 @@ function keepShadow(cutCanvas, origImg) {
       paper += luma(od[i], od[i + 1], od[i + 2]); pn++;
     }
     paper = paper / Math.max(1, pn);
-    for (let x = Math.max(0, bb.x - R); x <= Math.min(w - 1, bb.x + bb.w + R); x++) {
+    const xA = Math.max(0, bb.x - R + Math.min(0, dir) * R);
+    const xB = Math.min(w - 1, bb.x + bb.w + R + Math.max(0, dir) * R);
+    for (let x = xA; x <= xB; x++) {
       const i = (y * w + x) * 4;
       if (d[i + 3] > 240) continue;
       const oL = luma(od[i], od[i + 1], od[i + 2]);
-      if (oL > 145) continue;
-      if (oL > paper - 28) continue;
-      const dx = (x - (bb.x + bb.w / 2)) / Math.max(1, bb.w / 2 + R);
-      if (dx * dx > 1.05) continue;
-      const oa = Math.round(Math.min(160, fade * (150 - oL) * 1.4));
-      if (oa < 18) continue;
+      if (oL > 148) continue;
+      if (oL > paper - 26) continue;
+      const dx = (x - cx) / spread;
+      if (dx * dx > 1.12) continue;
+      const oa = Math.round(Math.min(170, fade * (152 - oL) * 1.45));
+      if (oa < 16) continue;
       if (oa <= d[i + 3]) continue;
       d[i] = od[i]; d[i + 1] = od[i + 1]; d[i + 2] = od[i + 2];
       d[i + 3] = oa;

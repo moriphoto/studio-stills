@@ -1,20 +1,16 @@
-/* Admin: /?images=url,url&return=https://jmceramics.netlify.app/admin/stills.html */
+/* Home → admin. Optional ?return=  */
+(function setHome() {
+  const a = document.getElementById("home");
+  if (!a) return;
+  const q = new URLSearchParams(location.search);
+  const back = q.get("return");
+  const allowed = /^https:\/\/(jmceramics\.netlify\.app\/admin\/?|moriphoto\.github\.io\/jm-website\/admin\/?)/;
+  if (back && allowed.test(back)) a.href = back;
+})();
+
 (async function loadFromQuery() {
   const q = new URLSearchParams(location.search);
   const raw = q.get("images");
-  const back = q.get("return");
-  if (back && /^https:\/\/jmceramics\.netlify\.app\/admin\/stills\.html/.test(back)) {
-    const bar = document.querySelector(".bar");
-    if (bar && !document.getElementById("backMedia")) {
-      const a = document.createElement("a");
-      a.id = "backMedia";
-      a.className = "ghost";
-      a.href = back;
-      a.textContent = "Return to media";
-      a.style.cssText = "text-decoration:none;display:inline-block;";
-      bar.appendChild(a);
-    }
-  }
   if (!raw || typeof addFiles !== "function") return;
   const urls = raw.split(",").map(function (s) { return s.trim(); }).filter(Boolean).slice(0, 20);
   if (!urls.length) return;

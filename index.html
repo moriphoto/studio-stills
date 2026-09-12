@@ -24,6 +24,7 @@
     }
     .icon { width:36px; height:36px; padding:0; display:inline-flex; align-items:center; justify-content:center; }
     .icon svg { width:18px; height:18px; fill:none; stroke:currentColor; stroke-width:1.7; }
+    a.icon { text-decoration:none; color:#fff; }
     #rmBrush.on { color:#ff3b3b; border-color:#ff3b3b; box-shadow:0 0 12px rgba(255,59,59,.4); }
     #files { position:absolute; width:0; height:0; opacity:0; pointer-events:none; }
     #calTop { width:28px; height:28px; padding:0; border:1px solid #fff; background:none; cursor:pointer; }
@@ -58,6 +59,9 @@
     <p class="lead">Process the stills. Tick the thumbs you want. Calibrate if you need a new cove. SET bakes a cleanup.</p>
   </header>
   <div class="bar">
+    <a class="ghost icon" id="home" href="https://jmceramics.netlify.app/admin/" title="Admin" aria-label="Admin">
+      <svg viewBox="0 0 24 24"><path d="M4 11 L12 4 L20 11"/><path d="M7 10 V20 H17 V10"/></svg>
+    </a>
     <label class="btn" for="files">Add JPEGs</label>
     <input id="files" type="file" accept="image/jpeg,image/png,.jpg,.jpeg,.png,.webp" multiple>
     <button class="gold" id="calibrate">Calibrate</button>

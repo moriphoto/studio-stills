@@ -13,7 +13,6 @@ function samplePlateAt(yNorm) {
   const rgb = plateRgb(yNorm);
   return { r: rgb[0], g: rgb[1], b: rgb[2] };
 }
-
 function localVar(od, w, h, x, y) {
   let m = 0, n = 0;
   for (let yy = y - 1; yy <= y + 1; yy++) {
@@ -37,7 +36,6 @@ function localVar(od, w, h, x, y) {
   }
   return v / Math.max(1, n);
 }
-
 function isPaperPixel(od, ow, oh, x, y) {
   const i = (y * ow + x) * 4;
   const r = od[i], g = od[i + 1], b = od[i + 2];
@@ -49,26 +47,27 @@ function isPaperPixel(od, ow, oh, x, y) {
   if (localVar(od, ow, oh, x, y) > 28) return false;
   return near || L > 236;
 }
-
+function blank(w, h) {
+  const c = document.createElement("canvas");
+  c.width = w; c.height = h;
+  return c;
+}
 function ensureLayers(item) {
   if (!item || !item.framed) return null;
   if (item.layers) return item.layers;
   const w = item.framed.width, h = item.framed.height;
-  const base = document.createElement("canvas");
-  base.width = w; base.height = h;
+  const base = blank(w, h);
   base.getContext("2d").drawImage(item.framed, 0, 0);
-  const shadow = document.createElement("canvas");
-  shadow.width = w; shadow.height = h;
-  const restore = document.createElement("canvas");
-  restore.width = w; restore.height = h;
   item.layers = {
     w: w, h: h, base: base,
-    shadowMask: shadow, restoreMask: restore,
-    cut: item.cut && item.cut.photo ? item.cut.photo : null
+    shadowMask: blank(w, h),
+    restoreMask: blank(w, h),
+    removeMask: blank(w, h),
+    cut: item.cut && item.cut.photo ? item.cut.photo : null,
+    dirty: false
   };
   return item.layers;
 }
-
 function paintMaskDot(mask, x, y, rx, ry, amount) {
   const ctx = mask.getContext("2d");
   const g = ctx.createRadialGradient(x, y, 0, x, y, Math.max(rx, ry));
@@ -81,7 +80,6 @@ function paintMaskDot(mask, x, y, rx, ry, amount) {
   ctx.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2);
   ctx.fill();
 }
-
 function punchPaperFromRestore(item, cx, cy, r) {
   const L = item.layers;
   const orig = item.origImg;
@@ -109,7 +107,6 @@ function punchPaperFromRestore(item, cx, cy, r) {
   }
   ctx.putImageData(image, x0, y0);
 }
-
 function punchPotFromShadow(item, cx, cy, rx, ry) {
   const L = item.layers;
   if (!L.cut) return;
@@ -136,7 +133,33 @@ function punchPotFromShadow(item, cx, cy, rx, ry) {
   }
   ctx.putImageData(image, x0, y0);
 }
-
+function tintMask(ctx, mask, color) {
+  const w = mask.width, h = mask.height;
+  const t = blank(w, h);
+  const tx = t.getContext("2d");
+  tx.fillStyle = color;
+  tx.fillRect(0, 0, w, h);
+  tx.globalCompositeOperation = "destination-in";
+  tx.drawImage(mask, 0, 0);
+  ctx.save();
+  ctx.globalAlpha = 0.3;
+  ctx.drawImage(t, 0, 0);
+  ctx.restore();
+}
+function previewLayers(item) {
+  const L = ensureLayers(item);
+  if (!L) return;
+  const w = L.w, h = L.h;
+  const view = blank(w, h);
+  const ctx = view.getContext("2d");
+  ctx.drawImage(L.base, 0, 0);
+  tintMask(ctx, L.restoreMask, "#3b82f6");
+  tintMask(ctx, L.shadowMask, "#39ff14");
+  tintMask(ctx, L.removeMask, "#ff3b3b");
+  const hero = document.getElementById("hero");
+  if (hero) hero.src = view.toDataURL("image/jpeg", 0.82);
+  L.dirty = true;
+}
 function composeFromLayers(item) {
   const L = ensureLayers(item);
   if (!L) return;
@@ -147,8 +170,21 @@ function composeFromLayers(item) {
   ctx.globalCompositeOperation = "source-over";
   ctx.drawImage(L.base, 0, 0);
 
-  const sh = document.createElement("canvas");
-  sh.width = w; sh.height = h;
+  if (groundEl) {
+    const plate = blank(w, h);
+    const px = plate.getContext("2d");
+    px.drawImage(groundEl, 0, 0, w, h);
+    px.globalCompositeOperation = "destination-in";
+    px.drawImage(L.removeMask, 0, 0);
+    ctx.drawImage(plate, 0, 0);
+  } else {
+    ctx.save();
+    ctx.globalCompositeOperation = "destination-out";
+    ctx.drawImage(L.removeMask, 0, 0);
+    ctx.restore();
+  }
+
+  const sh = blank(w, h);
   const sx = sh.getContext("2d");
   sx.fillStyle = "#1a1a1a";
   sx.fillRect(0, 0, w, h);
@@ -163,8 +199,7 @@ function composeFromLayers(item) {
   const orig = item.origImg;
   if (orig) {
     const fit = fitContain(orig.width, orig.height, w, h);
-    const tmp = document.createElement("canvas");
-    tmp.width = w; tmp.height = h;
+    const tmp = blank(w, h);
     const tx = tmp.getContext("2d");
     tx.drawImage(orig, 0, 0, orig.width, orig.height, fit.dx, fit.dy, fit.dw, fit.dh);
     tx.globalCompositeOperation = "destination-in";
@@ -173,8 +208,8 @@ function composeFromLayers(item) {
     ctx.globalAlpha = 1;
     ctx.drawImage(tmp, 0, 0);
   }
+  L.dirty = false;
 }
-
 async function stampOriginal(item, outX, outY) {
   if (!item.framed) { status("Process first, then paint."); return; }
   if (!item.origImg) item.origImg = await loadImage(item.file);
@@ -182,11 +217,8 @@ async function stampOriginal(item, outX, outY) {
   const r = Math.max(10, Math.round(L.w * 0.014));
   paintMaskDot(L.restoreMask, outX, outY, r, r, 0.72);
   punchPaperFromRestore(item, outX, outY, r);
-  composeFromLayers(item);
-  item.processedUrl = URL.createObjectURL(await toBlob(item.framed));
-  showHero(item);
+  previewLayers(item);
 }
-
 async function stampShadow(item, outX, outY) {
   if (!item.framed) { status("Process first, then paint the shadow."); return; }
   const L = ensureLayers(item);
@@ -194,7 +226,22 @@ async function stampShadow(item, outX, outY) {
   const ry = Math.max(8, Math.round(rx * 0.32));
   paintMaskDot(L.shadowMask, outX, outY, rx, ry, 0.34);
   punchPotFromShadow(item, outX, outY, rx, ry);
+  previewLayers(item);
+}
+async function stampRemove(item, outX, outY) {
+  if (!item.framed) { status("Process first, then paint to remove."); return; }
+  const L = ensureLayers(item);
+  const r = Math.max(10, Math.round(L.w * 0.014));
+  paintMaskDot(L.removeMask, outX, outY, r, r, 0.7);
+  previewLayers(item);
+}
+async function setCleanup(item) {
+  if (!item || !item.framed) { status("Process a still first."); return; }
+  ensureLayers(item);
   composeFromLayers(item);
+  item.layers.base.getContext("2d").drawImage(item.framed, 0, 0);
   item.processedUrl = URL.createObjectURL(await toBlob(item.framed));
   showHero(item);
+  render();
+  status("Set. Cleanup baked into this still only.");
 }

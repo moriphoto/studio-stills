@@ -22,11 +22,11 @@
       border-color: var(--live);
       box-shadow: 0 0 14px rgba(57,255,20,.55);
     }
-    .icon {
-      width:36px; height:36px; padding:0;
-      display:inline-flex; align-items:center; justify-content:center;
-    }
+    .icon { width:36px; height:36px; padding:0; display:inline-flex; align-items:center; justify-content:center; }
     .icon svg { width:18px; height:18px; fill:none; stroke:currentColor; stroke-width:1.7; }
+    #magic.on { color:#3b82f6; border-color:#3b82f6; box-shadow:0 0 12px rgba(59,130,246,.45); }
+    #shBrush.on { color:#39ff14; border-color:#39ff14; }
+    #rmBrush.on { color:#ff3b3b; border-color:#ff3b3b; box-shadow:0 0 12px rgba(255,59,59,.4); }
     #files { position:absolute; width:0; height:0; opacity:0; pointer-events:none; }
     .drop { margin:16px 24px; border:1px dashed rgba(255,255,255,.2); min-height:64px; display:flex; align-items:center; justify-content:center; color:var(--mute); cursor:pointer; }
     .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:10px; padding:0 24px 40px; }
@@ -42,16 +42,10 @@
     #calSrc, #calPrev { width:100%; max-height:280px; object-fit:contain; background:#000; cursor:crosshair; display:block; border:1px solid rgba(255,255,255,.12); }
     #cal .row { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:12px; }
     #heroWrap { padding:12px 24px 8px; display:flex; gap:12px; align-items:flex-start; }
-    #heroWrap p.k { display:none; }
     #heroSide { display:flex; flex-direction:column; gap:8px; }
     #hero {
-      width:100%;
-      max-width:880px;
-      max-height:400px;
-      height:auto;
-      object-fit:contain;
-      display:block;
-      background:#000;
+      width:100%; max-width:880px; max-height:400px; height:auto;
+      object-fit:contain; display:block; background:#000;
       border:1px solid rgba(255,255,255,.1);
     }
   </style>
@@ -60,7 +54,7 @@
   <header>
     <p class="k">John Mackenzie Ceramics</p>
     <h1>Studio stills</h1>
-    <p class="lead">Add JPEGs. Red target restores glaze only. Green target paints floor shadow only.</p>
+    <p class="lead">Cleanup is per still. Blue bring-back, green shadow, red remove. SET bakes the masks.</p>
   </header>
   <div class="bar">
     <label class="btn" for="files">Add JPEGs</label>
@@ -79,9 +73,7 @@
   <section id="cal" hidden>
     <p class="k">Calibration — click dark top, then light floor</p>
     <div class="row">
-      <div>
-        <img id="calSrc" alt="Pick tones">
-      </div>
+      <div><img id="calSrc" alt="Pick tones"></div>
       <div id="calPrevWrap" hidden>
         <img id="calPrev" alt="Plate">
         <button class="gold" id="calDl" style="margin-top:12px">Download studio-ground.jpg</button>
@@ -93,12 +85,16 @@
   <section id="heroWrap" hidden>
     <img id="hero" alt="still">
     <div id="heroSide">
-      <button class="ghost icon" id="magic" title="Bring back object" aria-label="Bring back object">
+      <button class="ghost icon" id="magic" title="Bring back object" aria-label="Bring back">
         <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"/><path d="M12 3 v3 M12 18 v3 M3 12 h3 M18 12 h3"/></svg>
       </button>
       <button class="ghost icon" id="shBrush" title="Shadow" aria-label="Shadow">
         <svg viewBox="0 0 24 24"><ellipse cx="12" cy="16" rx="8" ry="3"/><path d="M8 15 c1-6 7-6 8 0"/></svg>
       </button>
+      <button class="ghost icon" id="rmBrush" title="Remove" aria-label="Remove">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"/><path d="M8 8 l8 8 M16 8 l-8 8"/></svg>
+      </button>
+      <button class="gold" id="applyEdit">Set</button>
     </div>
   </section>
   <div class="grid" id="grid"></div>

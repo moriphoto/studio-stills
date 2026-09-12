@@ -2,6 +2,7 @@
 (function setHome() {
   const a = document.getElementById("home");
   if (!a) return;
+  if (location.pathname.indexOf("/studio") !== -1) a.href = "../admin/";
   const q = new URLSearchParams(location.search);
   const back = q.get("return");
   const allowed = /^https:\/\/(jmceramics\.netlify\.app\/admin\/?|moriphoto\.github\.io\/jm-website\/admin\/?)/;

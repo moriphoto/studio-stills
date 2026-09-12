@@ -1,7 +1,8 @@
 /* Push ticked stills into ceramics Media via Netlify Identity + Git Gateway. */
 (function () {
-  var IDENTITY_API = "https://jmceramics.netlify.app/.netlify/identity";
-  var GIT = "https://jmceramics.netlify.app/.netlify/git/github";
+  var onNetlify = location.hostname.indexOf("netlify.app") !== -1;
+  var IDENTITY_API = onNetlify ? (location.origin + "/.netlify/identity") : "https://jmceramics.netlify.app/.netlify/identity";
+  var GIT = onNetlify ? (location.origin + "/.netlify/git/github") : "https://jmceramics.netlify.app/.netlify/git/github";
   var BRANCH = "main";
   var PREFIX = "jm-website/images/inbox/";
 

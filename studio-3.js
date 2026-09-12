@@ -4,15 +4,33 @@ function download(blob,name){
   a.rel="noopener"; document.body.appendChild(a); a.click(); a.remove();
 }
 function status(t){ document.getElementById("status").textContent = t || ""; }
+
+let activeItem = null;
+window.magicOn = false;
+
+function showHero(item) {
+  activeItem = item;
+  const hero = document.getElementById("hero");
+  const wrap = document.getElementById("heroWrap");
+  if (!hero || !wrap) return;
+  wrap.hidden = false;
+  hero.src = item.processedUrl || item.url;
+  hero.style.cursor = window.magicOn ? "crosshair" : "default";
+}
+
 function render() {
   const grid = document.getElementById("grid");
   grid.innerHTML = "";
   items.forEach((item) => {
     const el = document.createElement("article");
+    el.style.cursor = "pointer";
+    if (item === activeItem) el.style.outline = "1px solid #39ff14";
     el.innerHTML = `<img src="${item.processedUrl||item.url}" alt=""><div class="m"><span>${item.name}</span></div>`;
+    el.onclick = function () { showHero(item); render(); };
     grid.appendChild(el);
   });
 }
+
 function addFiles(list){
   const picked = Array.from(list).filter(isStill).slice(0,20);
   if (!picked.length) { status("No JPEGs in that drop."); return; }
@@ -22,8 +40,9 @@ function addFiles(list){
   });
   if (items.length > 20) items.length = 20;
   render();
+  if (items.length) showHero(items[items.length - 1]);
   const framed = picked.some(f => /-1920/i.test(f.name));
-  status(picked.length + " added. Process all." + (framed ? " Use the original JPEG, not a -1920." : ""));
+  status(picked.length + " added. Tap a thumb for the big still." + (framed ? " Use the original JPEG, not a -1920." : ""));
 }
 
 window.shadowDir = 0;
@@ -40,6 +59,40 @@ const shL = document.getElementById("shL"); if (shL) shL.onclick = function () {
 const shC = document.getElementById("shC"); if (shC) shC.onclick = function () { setShadowDir(0, "shC"); };
 const shR = document.getElementById("shR"); if (shR) shR.onclick = function () { setShadowDir(1, "shR"); };
 
+const magicBtn = document.getElementById("magic");
+if (magicBtn) magicBtn.onclick = function () {
+  window.magicOn = !window.magicOn;
+  magicBtn.classList.toggle("on", window.magicOn);
+  const hero = document.getElementById("hero");
+  if (hero) hero.style.cursor = window.magicOn ? "crosshair" : "default";
+  status(window.magicOn ? "Magic on. Paint the big still to bring the original back." : "Magic off.");
+};
+
+async function stampOriginal(item, outX, outY) {
+  if (!item.framed) { status("Process first, then paint."); return; }
+  if (!item.origImg) item.origImg = await loadImage(item.file);
+  const orig = item.origImg;
+  const fw = item.framed.width, fh = item.framed.height;
+  const fit = fitContain(orig.width, orig.height, fw, fh);
+  const ctx = item.framed.getContext("2d");
+  const r = Math.max(14, Math.round(fw * 0.018));
+  const sx0 = Math.max(0, Math.round((outX - r - fit.dx) / fit.s));
+  const sy0 = Math.max(0, Math.round((outY - r - fit.dy) / fit.s));
+  const sx1 = Math.min(orig.width, Math.round((outX + r - fit.dx) / fit.s));
+  const sy1 = Math.min(orig.height, Math.round((outY + r - fit.dy) / fit.s));
+  if (sx1 <= sx0 || sy1 <= sy0) return;
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(outX, outY, r, 0, Math.PI * 2);
+  ctx.clip();
+  ctx.imageSmoothingEnabled = true;
+  ctx.drawImage(orig, 0, 0, orig.width, orig.height, fit.dx, fit.dy, fit.dw, fit.dh);
+  ctx.restore();
+  item.processedUrl = URL.createObjectURL(await toBlob(item.framed));
+  showHero(item);
+  render();
+}
+
 document.getElementById("files").onchange = e => { addFiles(e.target.files); e.target.value = ""; };
 const enhance = document.getElementById("enhance");
 if (enhance) enhance.oninput = e => { const v = document.getElementById("enhancev"); if (v) v.textContent = (Number(e.target.value)/100).toFixed(2); };
@@ -49,6 +102,30 @@ const drop = document.getElementById("drop");
 drop.onclick = () => document.getElementById("files").click();
 drop.ondragover = e => e.preventDefault();
 drop.ondrop = e => { e.preventDefault(); addFiles(e.dataTransfer.files); };
+
+const heroEl = document.getElementById("hero");
+if (heroEl) {
+  heroEl.onpointerdown = function (e) {
+    if (!window.magicOn || !activeItem) return;
+    e.preventDefault();
+    const paint = function (ev) {
+      const rect = heroEl.getBoundingClientRect();
+      const fw = activeItem.framed ? activeItem.framed.width : 1920;
+      const fh = activeItem.framed ? activeItem.framed.height : 1080;
+      const x = (ev.clientX - rect.left) / rect.width * fw;
+      const y = (ev.clientY - rect.top) / rect.height * fh;
+      stampOriginal(activeItem, x, y);
+    };
+    paint(e);
+    const move = function (ev) { paint(ev); };
+    const up = function () {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+  };
+}
 
 function loadImage(file){
   return new Promise((res,rej) => {
@@ -74,25 +151,21 @@ document.getElementById("run").onclick = async () => {
       try {
         items[i].cut = await cutFromFile(items[i].file, bar, status);
         items[i].framed = items[i].cut.canvas;
+        items[i].origImg = await loadImage(items[i].file);
         if (items[i].framed.width !== W || items[i].framed.height !== H) {
           items[i].cut = forceFrame(items[i].cut);
           items[i].framed = items[i].cut.canvas;
         }
         items[i].processedUrl = URL.createObjectURL(await toBlob(items[i].framed));
+        showHero(items[i]);
       } catch (one) {
         status("Skipped " + items[i].name + ": " + (one && one.message ? one.message : "error"));
         continue;
       }
       render();
-      const hero = document.getElementById("hero");
-      const wrap = document.getElementById("heroWrap");
-      if (hero && wrap) {
-        wrap.hidden = false;
-        hero.src = items[i].processedUrl;
-      }
     }
     const ok = items.filter(x => x.framed).length;
-    status(ok ? ("Done — " + ok + " at " + W + " × " + H + ".") : "Cut failed. Use the original JPEG.");
+    status(ok ? ("Done — " + ok + " at " + W + " × " + H + ". Tap a thumb. Magic to paint back.") : "Cut failed. Use the original JPEG.");
   } catch (err) {
     status("Process failed: " + (err && err.message ? err.message : "open Chrome console"));
   }
@@ -100,6 +173,7 @@ document.getElementById("run").onclick = async () => {
 };
 function resetStudio() {
   items.splice(0, items.length);
+  activeItem = null;
   groupUrl = null;
   document.getElementById("grid").innerHTML = "";
   document.getElementById("heroWrap").hidden = true;
@@ -107,6 +181,8 @@ function resetStudio() {
   const hero = document.getElementById("hero");
   if (hero) hero.removeAttribute("src");
   const web = document.getElementById("resWeb"); if (web) web.checked = true;
+  window.magicOn = false;
+  const magic = document.getElementById("magic"); if (magic) magic.classList.remove("on");
   setShadowDir(0, "shC");
   status("Reset.");
 }

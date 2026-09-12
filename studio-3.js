@@ -26,6 +26,19 @@ function addFiles(list){
   status(picked.length + " added. Process all." + (framed ? " Use the original JPEG, not a -1920." : ""));
 }
 
+window.shadowDir = 0;
+function setShadowDir(val, id) {
+  window.shadowDir = val;
+  ["shL", "shC", "shR"].forEach(function (k) {
+    const b = document.getElementById(k);
+    if (b) b.classList.toggle("on", k === id);
+  });
+  status("Shadow " + (val < 0 ? "left" : val > 0 ? "right" : "under") + ". Process again.");
+}
+const shL = document.getElementById("shL"); if (shL) shL.onclick = function () { setShadowDir(-1, "shL"); };
+const shC = document.getElementById("shC"); if (shC) shC.onclick = function () { setShadowDir(0, "shC"); };
+const shR = document.getElementById("shR"); if (shR) shR.onclick = function () { setShadowDir(1, "shR"); };
+
 document.getElementById("files").onchange = e => { addFiles(e.target.files); e.target.value = ""; };
 const enhance = document.getElementById("enhance");
 if (enhance) enhance.oninput = e => { const v = document.getElementById("enhancev"); if (v) v.textContent = (Number(e.target.value)/100).toFixed(2); };
@@ -54,13 +67,11 @@ document.getElementById("run").onclick = async () => {
   try {
     if (!assetsReady) assetsReady = loadAssets();
     await assetsReady;
-    window.autoCove = true;
     for (let i=0;i<items.length;i++){
-      const s = bar;
       status("Cutting " + (i+1) + " of " + items.length + "…");
       await new Promise(r => setTimeout(r, 20));
       try {
-        items[i].cut = await cutFromFile(items[i].file, s, status);
+        items[i].cut = await cutFromFile(items[i].file, bar, status);
         items[i].framed = items[i].cut.canvas;
         if (items[i].framed.width !== W || items[i].framed.height !== H) {
           items[i].cut = forceFrame(items[i].cut);
@@ -95,6 +106,7 @@ function resetStudio() {
   const hero = document.getElementById("hero");
   if (hero) hero.removeAttribute("src");
   const web = document.getElementById("resWeb"); if (web) web.checked = true;
+  setShadowDir(0, "shC");
   status("Reset.");
 }
 document.getElementById("reset").onclick = resetStudio;

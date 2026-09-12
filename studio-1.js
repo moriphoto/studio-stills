@@ -25,6 +25,7 @@ function readSettings() {
     high: outputIsHigh(),
     enhance: Number(document.getElementById("enhance") && document.getElementById("enhance").value || 108) / 100,
     edge: Number(document.getElementById("edge") && document.getElementById("edge").value || 10),
+    bringBack: !!(document.getElementById("bringBack") && document.getElementById("bringBack").checked),
     mask: 68,
     foot: 72,
     tol: 64,

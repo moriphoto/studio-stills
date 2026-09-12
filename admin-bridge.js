@@ -1,13 +1,24 @@
-/* Admin can open:
-   /?images=https://jmceramics.netlify.app/media/a.jpg,https://...
-   Stills land in the tray. Process all as usual.
-*/
+/* Admin: /?images=url,url&return=https://jmceramics.netlify.app/admin/stills.html */
 (async function loadFromQuery() {
-  const raw = new URLSearchParams(location.search).get("images");
+  const q = new URLSearchParams(location.search);
+  const raw = q.get("images");
+  const back = q.get("return");
+  if (back && /^https:\/\/jmceramics\.netlify\.app\/admin\/stills\.html/.test(back)) {
+    const bar = document.querySelector(".bar");
+    if (bar && !document.getElementById("backMedia")) {
+      const a = document.createElement("a");
+      a.id = "backMedia";
+      a.className = "ghost";
+      a.href = back;
+      a.textContent = "Return to media";
+      a.style.cssText = "text-decoration:none;display:inline-block;";
+      bar.appendChild(a);
+    }
+  }
   if (!raw || typeof addFiles !== "function") return;
   const urls = raw.split(",").map(function (s) { return s.trim(); }).filter(Boolean).slice(0, 20);
   if (!urls.length) return;
-  status("Loading " + urls.length + " from the site…");
+  status("Loading " + urls.length + " from media…");
   const files = [];
   for (let i = 0; i < urls.length; i++) {
     const url = urls[i];

@@ -27,6 +27,7 @@
       display:inline-flex; align-items:center; justify-content:center;
     }
     .icon svg { width:18px; height:18px; fill:none; stroke:currentColor; stroke-width:1.7; }
+    #files { position:absolute; width:0; height:0; opacity:0; pointer-events:none; }
     .drop { margin:16px 24px; border:1px dashed rgba(255,255,255,.2); min-height:64px; display:flex; align-items:center; justify-content:center; color:var(--mute); cursor:pointer; }
     .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:10px; padding:0 24px 40px; }
     article { background:#111; border:1px solid rgba(255,255,255,.1); }
@@ -36,21 +37,20 @@
     article .kill { margin-left:auto; background:none; border:0; color:#8a8a8a; font-size:16px; line-height:1; padding:0 4px; cursor:pointer; }
     article .kill:hover { color:#ff5a5a; }
     #status { color:var(--gold); font-size:13px; }
-    #files { color:#8a8a8a; font-size:12px; max-width:16rem; }
     label.t { font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:var(--mute); display:flex; gap:8px; align-items:center; }
     #cal { padding:12px 24px 24px; border-bottom:1px solid rgba(255,255,255,.1); }
     #calSrc, #calPrev { width:100%; max-height:280px; object-fit:contain; background:#000; cursor:crosshair; display:block; border:1px solid rgba(255,255,255,.12); }
     #cal .row { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:12px; }
-    #heroWrap { padding:12px 24px 8px; }
-    #heroWrap p.k { padding:0 0 8px; }
+    #heroWrap { padding:12px 24px 8px; display:flex; gap:12px; align-items:flex-start; }
+    #heroWrap p.k { display:none; }
+    #heroSide { display:flex; flex-direction:column; gap:8px; }
     #hero {
       width:100%;
-      max-width:960px;
-      max-height:420px;
+      max-width:880px;
+      max-height:400px;
       height:auto;
       object-fit:contain;
       display:block;
-      margin:0 auto;
       background:#000;
       border:1px solid rgba(255,255,255,.1);
     }
@@ -60,7 +60,7 @@
   <header>
     <p class="k">John Mackenzie Ceramics</p>
     <h1>Studio stills</h1>
-    <p class="lead">Red target restores glaze. Green target paints shadow. Tick and delete on the thumbs.</p>
+    <p class="lead">Add JPEGs. Red target restores glaze only. Green target paints floor shadow only.</p>
   </header>
   <div class="bar">
     <label class="btn" for="files">Add JPEGs</label>
@@ -70,18 +70,12 @@
     <label class="t"><input type="radio" name="res" id="resHigh"> High (upload)</label>
     <label class="t">Enhance <input id="enhance" type="range" min="100" max="130" value="108"> <span id="enhancev">1.08</span></label>
     <label class="t">Blend edge <input id="edge" type="range" min="0" max="20" value="10"> <span id="edgev">10</span></label>
-    <button class="ghost icon" id="magic" title="Magic — restore object" aria-label="Magic restore">
-      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"/><path d="M12 3 v3 M12 18 v3 M3 12 h3 M18 12 h3"/></svg>
-    </button>
-    <button class="ghost icon" id="shBrush" title="Shadow brush" aria-label="Shadow brush">
-      <svg viewBox="0 0 24 24"><ellipse cx="12" cy="16" rx="8" ry="3"/><path d="M8 15 c1-6 7-6 8 0"/></svg>
-    </button>
     <button class="ghost" id="run">Process all</button>
     <button class="ghost" id="reset">Reset</button>
     <button class="ghost" id="dl">Download singles</button>
     <span id="status"></span>
   </div>
-  <div class="drop" id="drop">Drop original JPEGs. Calibrate. Process. Paint with the targets.</div>
+  <div class="drop" id="drop">Drop original JPEGs. Calibrate. Process.</div>
   <section id="cal" hidden>
     <p class="k">Calibration — click dark top, then light floor</p>
     <div class="row">
@@ -97,8 +91,15 @@
     </div>
   </section>
   <section id="heroWrap" hidden>
-    <p class="k">Preview</p>
     <img id="hero" alt="still">
+    <div id="heroSide">
+      <button class="ghost icon" id="magic" title="Bring back object" aria-label="Bring back object">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"/><path d="M12 3 v3 M12 18 v3 M3 12 h3 M18 12 h3"/></svg>
+      </button>
+      <button class="ghost icon" id="shBrush" title="Shadow" aria-label="Shadow">
+        <svg viewBox="0 0 24 24"><ellipse cx="12" cy="16" rx="8" ry="3"/><path d="M8 15 c1-6 7-6 8 0"/></svg>
+      </button>
+    </div>
   </section>
   <div class="grid" id="grid"></div>
   <script src="studio-1.js"></script>

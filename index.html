@@ -8,31 +8,44 @@
     :root { --ink:#0a0a0a; --gold:#c4a35a; --rust:#8a4a22; --mute:#8a8a8a; --live:#39ff14; }
     * { box-sizing:border-box; margin:0; padding:0; }
     body { background:var(--ink); color:#f3f3f3; font-family:"Helvetica Neue",Helvetica,Arial,sans-serif; }
-    header { padding:32px 32px 20px; border-bottom:1px solid rgba(255,255,255,.1); }
+    header { padding:24px 24px 16px; border-bottom:1px solid rgba(255,255,255,.1); }
     header p.k { font-size:10px; font-weight:700; letter-spacing:.22em; text-transform:uppercase; color:var(--rust); }
-    h1 { font-size:32px; margin-top:8px; }
-    .lead { color:var(--mute); font-size:14px; max-width:58ch; margin-top:8px; line-height:1.5; }
-    .bar { display:flex; flex-wrap:wrap; gap:12px; align-items:center; padding:16px 32px; border-bottom:1px solid rgba(255,255,255,.1); }
+    h1 { font-size:26px; margin-top:8px; }
+    .lead { color:var(--mute); font-size:13px; max-width:58ch; margin-top:8px; line-height:1.5; }
+    .bar { display:flex; flex-wrap:wrap; gap:10px; align-items:center; padding:12px 24px; border-bottom:1px solid rgba(255,255,255,.1); }
     button { font:inherit; cursor:pointer; }
-    .btn { background:#fff; color:#000; border:0; padding:12px 18px; font-size:11px; font-weight:700; letter-spacing:.16em; text-transform:uppercase; }
-    .ghost { background:none; color:#fff; border:1px solid #fff; padding:12px 18px; font-size:11px; font-weight:700; letter-spacing:.16em; text-transform:uppercase; }
-    .gold { background:none; color:var(--gold); border:1px solid var(--gold); padding:12px 18px; font-size:11px; font-weight:700; letter-spacing:.16em; text-transform:uppercase; }
+    .btn { background:#fff; color:#000; border:0; padding:10px 14px; font-size:11px; font-weight:700; letter-spacing:.16em; text-transform:uppercase; }
+    .ghost { background:none; color:#fff; border:1px solid #fff; padding:10px 14px; font-size:11px; font-weight:700; letter-spacing:.16em; text-transform:uppercase; }
+    .gold { background:none; color:var(--gold); border:1px solid var(--gold); padding:10px 14px; font-size:11px; font-weight:700; letter-spacing:.16em; text-transform:uppercase; }
     button.on, .gold.on, .ghost.on {
       color: var(--live);
       border-color: var(--live);
       box-shadow: 0 0 14px rgba(57,255,20,.55);
     }
-    .drop { margin:24px 32px; border:1px dashed rgba(255,255,255,.2); min-height:88px; display:flex; align-items:center; justify-content:center; color:var(--mute); cursor:pointer; }
-    .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:12px; padding:0 32px 48px; }
+    .drop { margin:16px 24px; border:1px dashed rgba(255,255,255,.2); min-height:64px; display:flex; align-items:center; justify-content:center; color:var(--mute); cursor:pointer; }
+    .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:10px; padding:0 24px 40px; }
     article { background:#111; border:1px solid rgba(255,255,255,.1); }
     article img { width:100%; aspect-ratio:16/9; object-fit:contain; background:#000; display:block; }
-    article .m { padding:10px; font-size:12px; }
-    #status { color:var(--gold); font-size:14px; }
+    article .m { padding:8px; font-size:11px; }
+    #status { color:var(--gold); font-size:13px; }
     #files { color:#8a8a8a; font-size:12px; max-width:16rem; }
     label.t { font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:var(--mute); display:flex; gap:8px; align-items:center; }
-    #cal { padding:16px 32px 32px; border-bottom:1px solid rgba(255,255,255,.1); }
-    #calSrc, #calPrev { width:100%; max-height:420px; object-fit:contain; background:#000; cursor:crosshair; display:block; border:1px solid rgba(255,255,255,.12); }
-    #cal .row { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:12px; }
+    #cal { padding:12px 24px 24px; border-bottom:1px solid rgba(255,255,255,.1); }
+    #calSrc, #calPrev { width:100%; max-height:280px; object-fit:contain; background:#000; cursor:crosshair; display:block; border:1px solid rgba(255,255,255,.12); }
+    #cal .row { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:12px; }
+    #heroWrap { padding:12px 24px 8px; }
+    #heroWrap p.k { padding:0 0 8px; }
+    #hero {
+      width:100%;
+      max-width:960px;
+      max-height:420px;
+      height:auto;
+      object-fit:contain;
+      display:block;
+      margin:0 auto;
+      background:#000;
+      border:1px solid rgba(255,255,255,.1);
+    }
   </style>
 </head>
 <body>
@@ -78,8 +91,8 @@
     </div>
   </section>
   <section id="heroWrap" hidden>
-    <p class="k" style="padding:0 32px 8px">1920 × 1080</p>
-    <img id="hero" alt="still" style="width:100%;display:block;border-top:1px solid rgba(255,255,255,.1);border-bottom:1px solid rgba(255,255,255,.1)">
+    <p class="k">Preview</p>
+    <img id="hero" alt="still">
   </section>
   <div class="grid" id="grid"></div>
   <script src="studio-1.js"></script>

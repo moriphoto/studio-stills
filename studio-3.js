@@ -7,7 +7,12 @@ function status(t){ document.getElementById("status").textContent = t || ""; }
 
 let activeItem = null;
 window.magicOn = false;
+window.shadowBrushOn = false;
 
+function toolCursor() {
+  const hero = document.getElementById("hero");
+  if (hero) hero.style.cursor = (window.magicOn || window.shadowBrushOn) ? "crosshair" : "default";
+}
 function showHero(item) {
   activeItem = item;
   const hero = document.getElementById("hero");
@@ -15,9 +20,8 @@ function showHero(item) {
   if (!hero || !wrap) return;
   wrap.hidden = false;
   hero.src = item.processedUrl || item.url;
-  hero.style.cursor = window.magicOn ? "crosshair" : "default";
+  toolCursor();
 }
-
 function render() {
   const grid = document.getElementById("grid");
   grid.innerHTML = "";
@@ -30,7 +34,6 @@ function render() {
     grid.appendChild(el);
   });
 }
-
 function addFiles(list){
   const picked = Array.from(list).filter(isStill).slice(0,20);
   if (!picked.length) { status("No JPEGs in that drop."); return; }
@@ -59,14 +62,20 @@ const shL = document.getElementById("shL"); if (shL) shL.onclick = function () {
 const shC = document.getElementById("shC"); if (shC) shC.onclick = function () { setShadowDir(0, "shC"); };
 const shR = document.getElementById("shR"); if (shR) shR.onclick = function () { setShadowDir(1, "shR"); };
 
+function setTool(which) {
+  window.magicOn = which === "magic";
+  window.shadowBrushOn = which === "shadow";
+  const m = document.getElementById("magic");
+  const s = document.getElementById("shBrush");
+  if (m) m.classList.toggle("on", window.magicOn);
+  if (s) s.classList.toggle("on", window.shadowBrushOn);
+  toolCursor();
+  status(window.magicOn ? "Magic on. Paint to bring the original back." : window.shadowBrushOn ? "Shadow brush on. Paint the puddle to round it." : "Tools off.");
+}
 const magicBtn = document.getElementById("magic");
-if (magicBtn) magicBtn.onclick = function () {
-  window.magicOn = !window.magicOn;
-  magicBtn.classList.toggle("on", window.magicOn);
-  const hero = document.getElementById("hero");
-  if (hero) hero.style.cursor = window.magicOn ? "crosshair" : "default";
-  status(window.magicOn ? "Magic on. Paint the big still to bring the original back." : "Magic off.");
-};
+if (magicBtn) magicBtn.onclick = function () { setTool(window.magicOn ? "" : "magic"); };
+const shBrushBtn = document.getElementById("shBrush");
+if (shBrushBtn) shBrushBtn.onclick = function () { setTool(window.shadowBrushOn ? "" : "shadow"); };
 
 async function stampOriginal(item, outX, outY) {
   if (!item.framed) { status("Process first, then paint."); return; }
@@ -76,17 +85,34 @@ async function stampOriginal(item, outX, outY) {
   const fit = fitContain(orig.width, orig.height, fw, fh);
   const ctx = item.framed.getContext("2d");
   const r = Math.max(14, Math.round(fw * 0.018));
-  const sx0 = Math.max(0, Math.round((outX - r - fit.dx) / fit.s));
-  const sy0 = Math.max(0, Math.round((outY - r - fit.dy) / fit.s));
-  const sx1 = Math.min(orig.width, Math.round((outX + r - fit.dx) / fit.s));
-  const sy1 = Math.min(orig.height, Math.round((outY + r - fit.dy) / fit.s));
-  if (sx1 <= sx0 || sy1 <= sy0) return;
   ctx.save();
   ctx.beginPath();
   ctx.arc(outX, outY, r, 0, Math.PI * 2);
   ctx.clip();
   ctx.imageSmoothingEnabled = true;
   ctx.drawImage(orig, 0, 0, orig.width, orig.height, fit.dx, fit.dy, fit.dw, fit.dh);
+  ctx.restore();
+  item.processedUrl = URL.createObjectURL(await toBlob(item.framed));
+  showHero(item);
+  render();
+}
+
+async function stampShadow(item, outX, outY) {
+  if (!item.framed) { status("Process first, then paint the shadow."); return; }
+  const fw = item.framed.width, fh = item.framed.height;
+  const ctx = item.framed.getContext("2d");
+  const rx = Math.max(28, Math.round(fw * 0.034));
+  const ry = Math.max(10, Math.round(rx * 0.38));
+  const g = ctx.createRadialGradient(outX, outY, 2, outX, outY, rx);
+  g.addColorStop(0, "rgba(16,16,16,0.26)");
+  g.addColorStop(0.45, "rgba(16,16,16,0.12)");
+  g.addColorStop(1, "rgba(16,16,16,0)");
+  ctx.save();
+  ctx.globalCompositeOperation = "multiply";
+  ctx.fillStyle = g;
+  ctx.beginPath();
+  ctx.ellipse(outX, outY, rx, ry, 0, 0, Math.PI * 2);
+  ctx.fill();
   ctx.restore();
   item.processedUrl = URL.createObjectURL(await toBlob(item.framed));
   showHero(item);
@@ -106,7 +132,7 @@ drop.ondrop = e => { e.preventDefault(); addFiles(e.dataTransfer.files); };
 const heroEl = document.getElementById("hero");
 if (heroEl) {
   heroEl.onpointerdown = function (e) {
-    if (!window.magicOn || !activeItem) return;
+    if (!activeItem || (!window.magicOn && !window.shadowBrushOn)) return;
     e.preventDefault();
     const paint = function (ev) {
       const rect = heroEl.getBoundingClientRect();
@@ -114,7 +140,8 @@ if (heroEl) {
       const fh = activeItem.framed ? activeItem.framed.height : 1080;
       const x = (ev.clientX - rect.left) / rect.width * fw;
       const y = (ev.clientY - rect.top) / rect.height * fh;
-      stampOriginal(activeItem, x, y);
+      if (window.magicOn) stampOriginal(activeItem, x, y);
+      else stampShadow(activeItem, x, y);
     };
     paint(e);
     const move = function (ev) { paint(ev); };
@@ -165,7 +192,7 @@ document.getElementById("run").onclick = async () => {
       render();
     }
     const ok = items.filter(x => x.framed).length;
-    status(ok ? ("Done — " + ok + " at " + W + " × " + H + ". Tap a thumb. Magic to paint back.") : "Cut failed. Use the original JPEG.");
+    status(ok ? ("Done — " + ok + " at " + W + " × " + H + ".") : "Cut failed. Use the original JPEG.");
   } catch (err) {
     status("Process failed: " + (err && err.message ? err.message : "open Chrome console"));
   }
@@ -181,8 +208,7 @@ function resetStudio() {
   const hero = document.getElementById("hero");
   if (hero) hero.removeAttribute("src");
   const web = document.getElementById("resWeb"); if (web) web.checked = true;
-  window.magicOn = false;
-  const magic = document.getElementById("magic"); if (magic) magic.classList.remove("on");
+  setTool("");
   setShadowDir(0, "shC");
   status("Reset.");
 }

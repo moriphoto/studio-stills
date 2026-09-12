@@ -1,4 +1,4 @@
-/* Two-pick cove. Dark top, light floor. Preview aims the contact. */
+/* Top swatch or click. Floor click. Clean plate, no muddy lift when black is chosen. */
 (function () {
   let srcImg = null;
   let step = 0;
@@ -12,6 +12,15 @@
       if (!el) return;
       if (on) el.classList.add("on"); else el.classList.remove("on");
     });
+  }
+  function hexRgb(hex, y) {
+    const h = String(hex || "#000000").replace("#", "");
+    return {
+      r: parseInt(h.slice(0, 2), 16) || 0,
+      g: parseInt(h.slice(2, 4), 16) || 0,
+      b: parseInt(h.slice(4, 6), 16) || 0,
+      y: y == null ? 0 : y
+    };
   }
   function sample(img, clientX, clientY, el) {
     const rect = el.getBoundingClientRect();
@@ -31,15 +40,8 @@
     for (let i = 0; i < data.length; i += 4) { R += data[i]; G += data[i + 1]; B += data[i + 2]; n++; }
     return { r: R / n, g: G / n, b: B / n, y: y / img.height };
   }
-  function liftBlack(c) {
-    const L = luma(c.r, c.g, c.b);
-    if (L >= 8) return c;
-    const g = 8 / (L || 1);
-    return { r: Math.min(32, c.r * g), g: Math.min(32, c.g * g), b: Math.min(32, c.b * g) };
-  }
   function ease(t) { return t * t * (3 - 2 * t); }
   function buildPlate(top, bot) {
-    top = liftBlack(top);
     const PW = 3840, PH = 2160;
     const c = document.createElement("canvas");
     c.width = PW; c.height = PH;
@@ -70,18 +72,7 @@
     if (!src) return;
     const c = document.createElement("canvas");
     c.width = 1920; c.height = 1080;
-    const ctx = c.getContext("2d");
-    ctx.drawImage(src, 0, 0, 1920, 1080);
-    const dir = Number(window.shadowDir) || 0;
-    const cx = 960 + dir * 220;
-    const cy = 1080 * (window.coveFloor || 0.91);
-    ctx.save();
-    ctx.globalAlpha = 0.22;
-    ctx.fillStyle = "#1a1a1a";
-    ctx.beginPath();
-    ctx.ellipse(cx, cy, 160 + Math.abs(dir) * 40, 28, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
+    c.getContext("2d").drawImage(src, 0, 0, 1920, 1080);
     if ($("calPrev")) $("calPrev").src = c.toDataURL("image/jpeg", 0.9);
     if ($("calPrevWrap")) $("calPrevWrap").hidden = false;
   }
@@ -96,46 +87,58 @@
     try { localStorage.setItem("cove-plate", canvas.toDataURL("image/jpeg", 0.95)); } catch (e) {}
     if ($("cal")) $("cal").hidden = false;
     previewPlate();
-    status("Plate locked. Arrow aims the contact. Process uses this cove.");
+    status("Plate locked. Process uses this cove.");
+  }
+  function rebuildFromStops() {
+    if (!dark || !light) return;
+    applyPlate(buildPlate(dark, light), light.y + 0.04);
+  }
+  function calTarget() {
+    if (typeof activeItem !== "undefined" && activeItem) return activeItem;
+    const picked = items.filter(function (it) { return it.selected !== false; });
+    return picked[0] || items[0] || null;
   }
   function restorePlate() {
     try {
       const data = localStorage.getItem("cove-plate");
       if (!data) return;
       const img = new Image();
-      img.onload = function () {
-        groundEl = img;
-        window.plateLocked = true;
-        markLive(true);
-      };
+      img.onload = function () { groundEl = img; window.plateLocked = true; markLive(true); };
       img.src = data;
     } catch (e) {}
   }
   function openCal() {
-    const src = items[0] && items[0].url;
-    if (!src) { status("Add a JPEG first, then Calibrate."); return; }
+    const item = calTarget();
+    if (!item) { status("Add a JPEG, tap the thumb you want, then Calibrate."); return; }
+    showHero(item);
     $("cal").hidden = false;
-    $("calSrc").src = src;
-    step = 0; dark = light = null;
+    $("calSrc").src = item.url;
+    step = 1;
+    dark = hexRgb($("calTop") && $("calTop").value || "#000000", 0);
+    light = null;
     srcImg = new Image();
-    srcImg.onload = function () { status("Click the dark top of the cove."); };
-    srcImg.src = src;
+    srcImg.onload = function () { status("Top is the circle. Click the floor in the still."); };
+    srcImg.src = item.url;
     if (plateCanvas || groundEl) previewPlate();
   }
   function onPick(e) {
     if (!srcImg || !srcImg.width) return;
     const sw = sample(srcImg, e.clientX, e.clientY, $("calSrc"));
-    if (step === 0) { dark = sw; step = 1; status("Dark locked. Click the light floor."); return; }
     light = sw; step = 2;
-    applyPlate(buildPlate(dark, light), light.y + 0.04);
+    dark = hexRgb($("calTop") && $("calTop").value || "#000000", 0);
+    rebuildFromStops();
   }
   restorePlate();
   if ($("calibrate")) $("calibrate").onclick = openCal;
   if ($("calSrc")) $("calSrc").onclick = onPick;
+  if ($("calTop")) $("calTop").oninput = function () {
+    dark = hexRgb(this.value, 0);
+    if (light) rebuildFromStops();
+  };
   if ($("calUse")) $("calUse").onclick = function () {
     if (plateCanvas) applyPlate(plateCanvas, window.coveFloor);
     else if (groundEl) { markLive(true); window.plateLocked = true; previewPlate(); status("Plate locked."); }
-    else status("Pick dark, then light.");
+    else status("Set the top circle, then click the floor.");
   };
   if ($("calDl")) $("calDl").onclick = function () {
     if (!groundEl) return;

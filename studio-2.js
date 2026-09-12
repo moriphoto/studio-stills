@@ -87,6 +87,27 @@ function dropIslands(canvas) {
   ctx.putImageData(image, 0, 0);
 }
 
+function fadeFrameEdge(canvas) {
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
+  const w = canvas.width, h = canvas.height;
+  const band = Math.max(36, Math.round(w * 0.055));
+  const image = ctx.getImageData(0, 0, w, h);
+  const d = image.data;
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const i = (y * w + x) * 4;
+      if (d[i + 3] < 8) continue;
+      if (d[i + 3] > 248) continue;
+      let e = 1;
+      if (x < band) e *= x / band;
+      if (x > w - 1 - band) e *= (w - 1 - x) / band;
+      if (y > h - 1 - band) e *= (h - 1 - y) / band;
+      if (e < 1) d[i + 3] = Math.round(d[i + 3] * e);
+    }
+  }
+  ctx.putImageData(image, 0, 0);
+}
+
 function featherEdge(canvas, radius) {
   radius = Math.max(3, Math.round(Number(radius) || 6));
   const ctx = canvas.getContext("2d", { willReadFrequently: true });
@@ -134,6 +155,7 @@ function keepShadow(cutCanvas, origImg) {
   const y1 = Math.min(h - 1, Math.ceil(bb.y + bb.h + R));
   const cx = bb.x + bb.w / 2 + dir * bb.w * 0.36;
   const spread = Math.max(1, bb.w * 0.55 + R);
+  const band = Math.max(36, Math.round(w * 0.055));
   for (let y = y0; y <= y1; y++) {
     const fade = Math.pow(1 - (y - y0) / Math.max(1, y1 - y0), 0.75);
     let paper = 0, pn = 0;
@@ -156,7 +178,11 @@ function keepShadow(cutCanvas, origImg) {
       if (gap < 8) continue;
       const dx = (x - cx) / spread;
       if (dx * dx > 1) continue;
-      const oa = Math.round(Math.min(190, fade * (1 - dx * dx) * Math.min(80, gap) * 2.2));
+      let edge = 1;
+      if (x < band) edge *= x / band;
+      if (x > w - 1 - band) edge *= (w - 1 - x) / band;
+      if (y > h - 1 - band) edge *= (h - 1 - y) / band;
+      const oa = Math.round(Math.min(190, fade * edge * (1 - dx * dx) * Math.min(80, gap) * 2.2));
       if (oa < 14) continue;
       if (oa <= d[i + 3]) continue;
       d[i] = od[i]; d[i + 1] = od[i + 1]; d[i + 2] = od[i + 2];
@@ -194,6 +220,8 @@ function composeIntact(cutCanvas, origImg) {
   hardenMask(cutCanvas, 72);
   dropIslands(cutCanvas);
   keepShadow(cutCanvas, origImg);
+  fadeFrameEdge(cutCanvas);
+  dropIslands(cutCanvas);
   featherEdge(cutCanvas, Math.max(5, s.edge || 8));
   gradeCut(cutCanvas, s.enhance);
   const fit = fitContain(origImg.width, origImg.height, W, H);

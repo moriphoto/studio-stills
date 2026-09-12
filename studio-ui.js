@@ -45,6 +45,15 @@ if (rmBtn) rmBtn.onclick = function () { setTool(window.removeOn ? "" : "remove"
 const setBtn = document.getElementById("applyEdit");
 if (setBtn) setBtn.onclick = function () { setCleanup(activeItem); };
 
+function selectAll(on) {
+  items.forEach(function (it) { it.selected = on; });
+  render();
+}
+const selAll = document.getElementById("selAll");
+if (selAll) selAll.onclick = function () { selectAll(true); };
+const selNone = document.getElementById("selNone");
+if (selNone) selNone.onclick = function () { selectAll(false); };
+
 const heroEl = document.getElementById("hero");
 if (heroEl) {
   heroEl.onpointerdown = function (e) {

@@ -6,51 +6,193 @@
   <script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
   <title>JM Studio — ceramic stills</title>
   <style>
-    :root { --ink:#0a0a0a; --gold:#c4a35a; --rust:#8a4a22; --mute:#8a8a8a; --live:#39ff14; }
-    * { box-sizing:border-box; margin:0; padding:0; }
-    body { background:var(--ink); color:#f3f3f3; font-family:"Helvetica Neue",Helvetica,Arial,sans-serif; }
-    header { padding:24px 24px 16px; border-bottom:1px solid rgba(255,255,255,.1); }
-    header p.k { font-size:10px; font-weight:700; letter-spacing:.22em; text-transform:uppercase; color:var(--rust); }
-    h1 { font-size:26px; margin-top:8px; }
-    .lead { color:var(--mute); font-size:13px; max-width:58ch; margin-top:8px; line-height:1.5; }
-    .bar { display:flex; flex-wrap:wrap; gap:10px; align-items:center; padding:12px 24px; border-bottom:1px solid rgba(255,255,255,.1); }
-    button { font:inherit; cursor:pointer; }
-    .btn { background:#fff; color:#000; border:0; padding:10px 14px; font-size:11px; font-weight:700; letter-spacing:.16em; text-transform:uppercase; }
-    .ghost { background:none; color:#fff; border:1px solid #fff; padding:10px 14px; font-size:11px; font-weight:700; letter-spacing:.16em; text-transform:uppercase; }
-    .gold { background:none; color:var(--gold); border:1px solid var(--gold); padding:10px 14px; font-size:11px; font-weight:700; letter-spacing:.16em; text-transform:uppercase; }
+    :root {
+      --ink: #090b0d;
+      --panel: #14181e;
+      --panel-2: #1c2128;
+      --line: rgba(255,255,255,.08);
+      --ink-text: #f3f3f3;
+      --mute: #8a8a8a;
+      --gold: #c4a35a;
+      --rust: #8a4a22;
+      --live: #39ff14;
+      --radius: 16px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--ink);
+      color: var(--ink-text);
+      font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    }
+    header { padding: 28px 28px 18px; border-bottom: 1px solid var(--line); }
+    header p.k {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .22em;
+      text-transform: uppercase;
+      color: var(--rust);
+    }
+    h1 { font-size: 26px; margin-top: 8px; font-weight: 600; letter-spacing: -.02em; }
+    .lead { color: var(--mute); font-size: 13px; max-width: 62ch; margin-top: 8px; line-height: 1.5; }
+
+    .deck {
+      display: grid;
+      grid-template-columns: 1.1fr 1.2fr 1fr;
+      gap: 12px;
+      padding: 16px 28px 0;
+    }
+    @media (max-width: 1100px) { .deck { grid-template-columns: 1fr 1fr; } }
+    @media (max-width: 720px) { .deck { grid-template-columns: 1fr; padding: 16px 16px 0; } }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .section-title {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .16em;
+      text-transform: uppercase;
+      color: var(--mute);
+    }
+    .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .status-row { padding: 8px 28px 0; min-height: 28px; }
+    @media (max-width: 720px) { .status-row { padding: 8px 16px 0; } }
+
+    button, .btn { font: inherit; cursor: pointer; }
+    .btn, .ghost, .gold {
+      padding: 10px 14px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .16em;
+      text-transform: uppercase;
+      border-radius: 10px;
+    }
+    .btn { background: #fff; color: #000; border: 0; }
+    .ghost { background: var(--panel-2); color: #fff; border: 1px solid var(--line); }
+    .gold { background: none; color: var(--gold); border: 1px solid var(--gold); }
+    .btn:hover { filter: brightness(1.06); }
+    .ghost:hover { border-color: rgba(255,255,255,.22); }
+    .gold:hover { background: rgba(196,163,90,.08); }
     button.on, .gold.on, .ghost.on {
       color: var(--live);
       border-color: var(--live);
-      box-shadow: 0 0 14px rgba(57,255,20,.55);
+      box-shadow: 0 0 14px rgba(57,255,20,.45);
     }
-    .icon { width:36px; height:36px; padding:0; display:inline-flex; align-items:center; justify-content:center; }
-    .icon svg { width:18px; height:18px; fill:none; stroke:currentColor; stroke-width:1.7; }
-    a.icon { text-decoration:none; color:#fff; }
-    #rmBrush.on { color:#ff3b3b; border-color:#ff3b3b; box-shadow:0 0 12px rgba(255,59,59,.4); }
-    #files { position:absolute; width:0; height:0; opacity:0; pointer-events:none; }
-    #calTop { width:28px; height:28px; padding:0; border:1px solid #fff; background:none; cursor:pointer; }
-    .cal-opt { display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin:12px 0; }
-    .drop { margin:16px 24px; border:1px dashed rgba(255,255,255,.2); min-height:64px; display:flex; align-items:center; justify-content:center; color:var(--mute); cursor:pointer; }
+    button:disabled { opacity: .45; cursor: wait; }
+    .icon { width: 36px; height: 36px; padding: 0; display: inline-flex; align-items: center; justify-content: center; }
+    .icon svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.7; }
+    a.icon { text-decoration: none; color: #fff; }
+    #rmBrush.on { color: #ff3b3b; border-color: #ff3b3b; box-shadow: 0 0 12px rgba(255,59,59,.4); }
+    #files { position: absolute; width: 0; height: 0; opacity: 0; pointer-events: none; }
+    #calTop { width: 28px; height: 28px; padding: 0; border: 1px solid #fff; background: none; cursor: pointer; }
 
-    .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:10px; padding:0 24px 40px; }
-    article { background:#111; border:1px solid rgba(255,255,255,.1); }
-    article img { width:100%; aspect-ratio:16/9; object-fit:contain; background:#000; display:block; }
-    article .m { padding:8px; font-size:11px; display:flex; align-items:center; gap:8px; }
-    article .pick { flex:1; display:flex; align-items:center; gap:6px; color:#ccc; min-width:0; overflow:hidden; }
-    article .kill { margin-left:auto; background:none; border:0; color:#8a8a8a; font-size:16px; line-height:1; padding:0 4px; cursor:pointer; }
-    article .kill:hover { color:#ff5a5a; }
-    #status { color:var(--gold); font-size:13px; }
-    label.t { font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:var(--mute); display:flex; gap:8px; align-items:center; }
-    #cal { padding:12px 24px 24px; border-bottom:1px solid rgba(255,255,255,.1); }
-    #calSrc, #calPrev { width:100%; max-height:280px; object-fit:contain; background:#000; cursor:crosshair; display:block; border:1px solid rgba(255,255,255,.12); }
-    #cal .row { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:12px; }
-    #heroWrap { padding:12px 24px 8px; display:flex; gap:12px; align-items:flex-start; }
-    #heroSide { display:flex; flex-direction:column; gap:8px; }
-    #hero {
-      width:100%; max-width:880px; max-height:400px; height:auto;
-      object-fit:contain; display:block; background:#000;
-      border:1px solid rgba(255,255,255,.1);
+    label.t {
+      font-size: 11px;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--mute);
+      display: flex;
+      gap: 8px;
+      align-items: center;
     }
+    .seg {
+      display: flex;
+      background: #0e1116;
+      border-radius: 10px;
+      padding: 3px;
+      gap: 2px;
+    }
+    .seg label.t {
+      flex: 1;
+      justify-content: center;
+      padding: 8px 10px;
+      border-radius: 8px;
+      cursor: pointer;
+      color: var(--mute);
+    }
+    .seg input { accent-color: var(--gold); }
+    .sliders { display: flex; flex-direction: column; gap: 10px; }
+    .slider-head { display: flex; justify-content: space-between; font-size: 11px; color: var(--mute); text-transform: uppercase; letter-spacing: .08em; }
+    .slider-head b { color: var(--gold); font-weight: 600; }
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 6px;
+      border-radius: 3px;
+      background: #0e1116;
+      outline: none;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: #fff;
+      cursor: pointer;
+    }
+
+    .drop {
+      margin: 16px 28px;
+      border: 1px dashed rgba(255,255,255,.18);
+      border-radius: var(--radius);
+      min-height: 72px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--mute);
+      cursor: pointer;
+      background: rgba(20,24,30,.5);
+      font-size: 13px;
+    }
+    .drop:hover { border-color: var(--gold); color: #ccc; }
+    @media (max-width: 720px) { .drop { margin: 16px; } }
+
+    .cal-opt { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 12px 0; }
+    #cal { padding: 16px 28px 24px; border-bottom: 1px solid var(--line); }
+    #calSrc, #calPrev {
+      width: 100%;
+      max-height: 280px;
+      object-fit: contain;
+      background: #000;
+      cursor: crosshair;
+      display: block;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+    }
+    #cal .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px; }
+    @media (max-width: 720px) { #cal { padding: 16px; } #cal .row { grid-template-columns: 1fr; } }
+
+    #heroWrap { padding: 12px 28px 8px; display: flex; gap: 12px; align-items: flex-start; }
+    @media (max-width: 720px) { #heroWrap { padding: 12px 16px; } }
+    #heroSide { display: flex; flex-direction: column; gap: 8px; }
+    #hero {
+      width: 100%;
+      max-width: 960px;
+      max-height: 540px;
+      height: auto;
+      object-fit: contain;
+      display: block;
+      background: #000;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+    }
+
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); gap: 10px; padding: 0 28px 48px; }
+    @media (max-width: 720px) { .grid { padding: 0 16px 48px; } }
+    article { background: #111; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+    article img { width: 100%; aspect-ratio: 16/9; object-fit: contain; background: #000; display: block; }
+    article .m { padding: 8px; font-size: 11px; display: flex; align-items: center; gap: 8px; }
+    article .pick { flex: 1; display: flex; align-items: center; gap: 6px; color: #ccc; min-width: 0; overflow: hidden; }
+    article .kill { margin-left: auto; background: none; border: 0; color: #8a8a8a; font-size: 16px; line-height: 1; padding: 0 4px; cursor: pointer; }
+    article .kill:hover { color: #ff5a5a; }
+    #status { color: var(--gold); font-size: 13px; }
   </style>
 </head>
 <body>
@@ -59,26 +201,56 @@
     <h1>Studio stills</h1>
     <p class="lead">Process the stills. Tick the thumbs you want. Calibrate if you need a new cove. SET bakes a cleanup.</p>
   </header>
-  <div class="bar">
-    <a class="ghost icon" id="home" href="https://jmceramics.netlify.app/admin/" title="Admin" aria-label="Admin">
-      <svg viewBox="0 0 24 24"><path d="M4 11 L12 4 L20 11"/><path d="M7 10 V20 H17 V10"/></svg>
-    </a>
-    <label class="btn" for="files">Add JPEGs</label>
-    <input id="files" type="file" accept="image/jpeg,image/png,.jpg,.jpeg,.png,.webp" multiple>
-    <button class="gold" id="calibrate">Calibrate</button>
-    <label class="t"><input type="radio" name="res" id="resWeb" checked> Web 1920</label>
-    <label class="t"><input type="radio" name="res" id="resHigh"> High (upload)</label>
-    <label class="t">Enhance <input id="enhance" type="range" min="100" max="130" value="108"> <span id="enhancev">1.08</span></label>
-    <label class="t">Blend edge <input id="edge" type="range" min="0" max="20" value="10"> <span id="edgev">10</span></label>
-    <button class="ghost" id="selAll">Check all</button>
-    <button class="ghost" id="run">Process all</button>
-    <button class="ghost" id="reset">Reset</button>
-    <button class="ghost" id="dl">Download singles</button>
-    <button class="ghost" id="dlFolder">Download folder</button>
-    <button class="gold" id="dlCeramics">To ceramics media</button>
-    <span id="status"></span>
+
+  <div class="deck">
+    <div class="card">
+      <div class="section-title">Ingest</div>
+      <div class="row">
+        <a class="ghost icon" id="home" href="https://jmceramics.netlify.app/admin/" title="Admin" aria-label="Admin">
+          <svg viewBox="0 0 24 24"><path d="M4 11 L12 4 L20 11"/><path d="M7 10 V20 H17 V10"/></svg>
+        </a>
+        <label class="btn" for="files">Add JPEGs</label>
+        <input id="files" type="file" accept="image/jpeg,image/png,.jpg,.jpeg,.png,.webp" multiple>
+        <button class="gold" id="calibrate">Calibrate</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="section-title">Output</div>
+      <div class="seg">
+        <label class="t"><input type="radio" name="res" id="resWeb" checked> Web 1920</label>
+        <label class="t"><input type="radio" name="res" id="resHigh"> High (upload)</label>
+      </div>
+      <div class="sliders">
+        <div>
+          <div class="slider-head">Enhance <b id="enhancev">1.08</b></div>
+          <label class="t"><input id="enhance" type="range" min="100" max="130" value="108"></label>
+        </div>
+        <div>
+          <div class="slider-head">Blend edge <b id="edgev">10</b></div>
+          <label class="t"><input id="edge" type="range" min="0" max="20" value="10"></label>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="section-title">Batch &amp; export</div>
+      <div class="row">
+        <button class="ghost" id="selAll">Check all</button>
+        <button class="btn" id="run">Process all</button>
+        <button class="ghost" id="reset">Reset</button>
+      </div>
+      <div class="row">
+        <button class="ghost" id="dl">Download singles</button>
+        <button class="ghost" id="dlFolder">Download folder</button>
+        <button class="gold" id="dlCeramics">To ceramics media</button>
+      </div>
+    </div>
   </div>
+
+  <div class="status-row"><span id="status"></span></div>
   <div class="drop" id="drop">Drop original JPEGs. Tick thumbs. Calibrate. Process.</div>
+
   <section id="cal" hidden>
     <p class="k">Calibrate</p>
     <p class="lead">Use this plate as it is. Turn Top colour on only if you want to tint the cove. Then click the floor.</p>
@@ -96,6 +268,7 @@
       </div>
     </div>
   </section>
+
   <section id="heroWrap" hidden>
     <img id="hero" alt="still">
     <div id="heroSide">
@@ -105,7 +278,9 @@
       <button class="gold" id="applyEdit">Set</button>
     </div>
   </section>
+
   <div class="grid" id="grid"></div>
+
   <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
   <script src="studio-1.js"></script>
   <script src="studio-cut.js"></script>

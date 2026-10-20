@@ -120,6 +120,8 @@ async function stampShadow(item, outX, outY) {
 }
 
 document.getElementById("files").onchange = e => { addFiles(e.target.files); e.target.value = ""; };
+const cam = document.getElementById("cam");
+if (cam) cam.onchange = e => { addFiles(e.target.files); e.target.value = ""; };
 const enhance = document.getElementById("enhance");
 if (enhance) enhance.oninput = e => { const v = document.getElementById("enhancev"); if (v) v.textContent = (Number(e.target.value)/100).toFixed(2); };
 const edge = document.getElementById("edge");
@@ -205,6 +207,8 @@ function resetStudio() {
   document.getElementById("grid").innerHTML = "";
   document.getElementById("heroWrap").hidden = true;
   document.getElementById("files").value = "";
+  const camEl = document.getElementById("cam");
+  if (camEl) camEl.value = "";
   const hero = document.getElementById("hero");
   if (hero) hero.removeAttribute("src");
   const web = document.getElementById("resWeb"); if (web) web.checked = true;

@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
-  <title>JM Studio — ceramic stills</title>
+  <title>Cove — stills</title>
   <style>
     :root {
       --ink: #090b0d;
@@ -24,25 +24,17 @@
       color: var(--ink-text);
       font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
     }
-    header { padding: 28px 28px 18px; border-bottom: 1px solid var(--line); }
-    header p.k {
-      font-size: 10px;
-      font-weight: 700;
-      letter-spacing: .22em;
-      text-transform: uppercase;
-      color: var(--rust);
-    }
-    h1 { font-size: 26px; margin-top: 8px; font-weight: 600; letter-spacing: -.02em; }
-    .lead { color: var(--mute); font-size: 13px; max-width: 62ch; margin-top: 8px; line-height: 1.5; }
+    header { padding: 18px 22px 12px; border-bottom: 1px solid var(--line); display: flex; align-items: baseline; gap: 14px; }
+    h1 { font-size: 22px; font-weight: 600; letter-spacing: -.02em; }
+    .lead { color: var(--mute); font-size: 13px; }
 
     .deck {
       display: grid;
-      grid-template-columns: 1.1fr 1.2fr 1fr;
-      gap: 12px;
-      padding: 16px 28px 0;
+      grid-template-columns: 1.15fr .85fr;
+      gap: 10px;
+      padding: 12px 22px 0;
     }
-    @media (max-width: 1100px) { .deck { grid-template-columns: 1fr 1fr; } }
-    @media (max-width: 720px) { .deck { grid-template-columns: 1fr; padding: 16px 16px 0; } }
+    @media (max-width: 860px) { .deck { grid-template-columns: 1fr; padding: 12px 14px 0; } }
 
     .card {
       background: var(--panel);
@@ -66,11 +58,10 @@
 
     button, .btn { font: inherit; cursor: pointer; }
     .btn, .ghost, .gold {
-      padding: 10px 14px;
+      padding: 8px 12px;
       font-size: 11px;
-      font-weight: 700;
-      letter-spacing: .16em;
-      text-transform: uppercase;
+      font-weight: 600;
+      letter-spacing: .04em;
       border-radius: 10px;
     }
     .btn { background: #fff; color: #000; border: 0; }
@@ -89,7 +80,7 @@
     .icon svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.7; }
     a.icon { text-decoration: none; color: #fff; }
     #rmBrush.on { color: #ff3b3b; border-color: #ff3b3b; box-shadow: 0 0 12px rgba(255,59,59,.4); }
-    #files { position: absolute; width: 0; height: 0; opacity: 0; pointer-events: none; }
+    #files, #cam { position: absolute; width: 0; height: 0; opacity: 0; pointer-events: none; }
     #calTop { width: 28px; height: 28px; padding: 0; border: 1px solid #fff; background: none; cursor: pointer; }
 
     label.t {
@@ -139,10 +130,10 @@
     }
 
     .drop {
-      margin: 16px 28px;
+      margin: 12px 22px;
       border: 1px dashed rgba(255,255,255,.18);
       border-radius: var(--radius);
-      min-height: 72px;
+      min-height: 52px;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -197,29 +188,32 @@
 </head>
 <body>
   <header>
-    <p class="k">John Mackenzie Ceramics</p>
-    <h1>Studio stills</h1>
-    <p class="lead">Process the stills. Tick the thumbs you want. Calibrate if you need a new cove. SET bakes a cleanup.</p>
+    <h1>Cove</h1>
+    <p class="lead">Cut the object. Sit it on the graduated ground.</p>
   </header>
 
   <div class="deck">
     <div class="card">
-      <div class="section-title">Ingest</div>
+      <div class="section-title">In</div>
       <div class="row">
-        <a class="ghost icon" id="home" href="https://jmceramics.netlify.app/admin/" title="Admin" aria-label="Admin">
-          <svg viewBox="0 0 24 24"><path d="M4 11 L12 4 L20 11"/><path d="M7 10 V20 H17 V10"/></svg>
-        </a>
+        <label class="ghost icon" for="cam" title="Phone camera" aria-label="Phone camera">
+          <svg viewBox="0 0 24 24"><rect x="7" y="2" width="10" height="20" rx="2"/><circle cx="12" cy="10" r="2.4"/><path d="M10.2 17.5 h3.6"/></svg>
+        </label>
         <label class="btn" for="files">Add JPEGs</label>
         <input id="files" type="file" accept="image/jpeg,image/png,.jpg,.jpeg,.png,.webp" multiple>
+        <input id="cam" type="file" accept="image/*" capture="environment">
         <button class="gold" id="calibrate">Calibrate</button>
+        <a class="ghost icon" id="home" href="https://moriphoto.github.io/jm-website/admin/" title="Admin" aria-label="Admin">
+          <svg viewBox="0 0 24 24"><path d="M4 11 L12 4 L20 11"/><path d="M7 10 V20 H17 V10"/></svg>
+        </a>
       </div>
     </div>
 
     <div class="card">
-      <div class="section-title">Output</div>
+      <div class="section-title">Finish</div>
       <div class="seg">
         <label class="t"><input type="radio" name="res" id="resWeb" checked> Web 1920</label>
-        <label class="t"><input type="radio" name="res" id="resHigh"> High (upload)</label>
+        <label class="t"><input type="radio" name="res" id="resHigh"> High</label>
       </div>
       <div class="sliders">
         <div>
@@ -231,25 +225,19 @@
           <label class="t"><input id="edge" type="range" min="0" max="20" value="10"></label>
         </div>
       </div>
-    </div>
-
-    <div class="card">
-      <div class="section-title">Batch &amp; export</div>
       <div class="row">
-        <button class="ghost" id="selAll">Check all</button>
-        <button class="btn" id="run">Process all</button>
+        <button class="ghost" id="selAll">All</button>
+        <button class="btn" id="run">Process</button>
         <button class="ghost" id="reset">Reset</button>
-      </div>
-      <div class="row">
-        <button class="ghost" id="dl">Download singles</button>
-        <button class="ghost" id="dlFolder">Download folder</button>
-        <button class="gold" id="dlCeramics">To ceramics media</button>
+        <button class="ghost" id="dl">Singles</button>
+        <button class="ghost" id="dlFolder">Folder</button>
+        <button class="gold" id="dlCeramics">To media</button>
       </div>
     </div>
   </div>
 
   <div class="status-row"><span id="status"></span></div>
-  <div class="drop" id="drop">Drop original JPEGs. Tick thumbs. Calibrate. Process.</div>
+  <div class="drop" id="drop">Drop JPEGs, or use the phone camera.</div>
 
   <section id="cal" hidden>
     <p class="k">Calibrate</p>

@@ -135,12 +135,20 @@ if (dlCeramics) dlCeramics.onclick = async function () {
   }
   dlCeramics.classList.add("on");
   const stamp = packStamp();
-  status("Packing " + picked.length + "…");
+  status("Sending " + picked.length + " to the media folder…");
   try {
-    const n = await zipTicked("inbox/" + stamp, "inbox-" + stamp);
-    status(n + " ticked picture" + (n === 1 ? "" : "s") + " in one zip.");
+    if (typeof pushStillsToMedia !== "function") throw new Error("Upload is not loaded");
+    const n = await pushStillsToMedia(picked, stamp, status);
+    status(n + " saved on GitHub in images/uploads/" + stamp + ". They are in the admin Media folder.");
   } catch (err) {
     dlCeramics.classList.remove("on");
-    status("Could not pack them. " + (err && err.message ? err.message : ""));
+    const why = err && err.message ? err.message : "upload failed";
+    status("The media folder was not updated (" + why + "). Downloading a zip instead.");
+    try {
+      const n = await zipTicked("uploads/" + stamp, "uploads-" + stamp);
+      if (n) status("Zip downloaded. Sign in on this page with the ceramics admin, then To media again.");
+    } catch (zipErr) {
+      status("Upload failed. " + why);
+    }
   }
 };

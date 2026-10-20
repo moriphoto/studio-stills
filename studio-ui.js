@@ -33,11 +33,18 @@ const rmBtn = document.getElementById("rmBrush");
 if (rmBtn) rmBtn.onclick = function () { setTool(window.removeOn ? "" : "remove"); };
 const setBtn = document.getElementById("applyEdit");
 if (setBtn) setBtn.onclick = function () { setCleanup(activeItem); };
+function paintAll() {
+  const btn = document.getElementById("selAll");
+  if (!btn) return;
+  const allOn = items.length > 0 && items.every(function (it) { return it.selected !== false; });
+  btn.classList.toggle("on", allOn);
+}
 const selAll = document.getElementById("selAll");
 if (selAll) selAll.onclick = function () {
-  const on = !items.every(function (it) { return it.selected !== false; });
-  items.forEach(function (it) { it.selected = on; });
+  if (!items.length) { status("Add pictures first."); return; }
+  items.forEach(function (it) { it.selected = true; });
   render();
+  status(items.length + " ticked.");
 };
 
 const heroEl = document.getElementById("hero");
@@ -80,6 +87,7 @@ function render() {
     el.querySelector("input").onchange = function (e) {
       e.stopPropagation();
       item.selected = e.target.checked;
+      paintAll();
     };
     el.querySelector(".kill").onclick = function (e) {
       e.stopPropagation();
@@ -94,6 +102,7 @@ function render() {
     };
     grid.appendChild(el);
   });
+  paintAll();
 }
 
 document.getElementById("dl").onclick = async () => {
@@ -154,22 +163,27 @@ if (dlFolder) dlFolder.onclick = async function () {
 const dlCeramics = document.getElementById("dlCeramics");
 if (dlCeramics) dlCeramics.onclick = async function () {
   const picked = tickedFramed();
-  if (!picked.length) { status("Tick processed stills first."); return; }
+  const notDone = items.filter(function (it) { return it.selected !== false && !it.framed; });
+  if (!picked.length) {
+    status(notDone.length ? "Process the pictures first, then To media." : "Tick a picture, then To media.");
+    return;
+  }
+  status("To media… " + picked.length + " picture" + (picked.length === 1 ? "" : "s") + ".");
   const stamp = packStamp();
   try {
     if (typeof window.pushStillsToMedia === "function") {
       const n = await window.pushStillsToMedia(picked, stamp, status);
-      status(n + " stills in Media / inbox/" + stamp + ". Choose them in the catalogue when you want.");
-      window.open("https://jmceramics.netlify.app/admin/#/collections/catalogue/entries/works", "_blank", "noopener");
+      status(n + " in Media, folder inbox/" + stamp + ".");
+      window.open("https://moriphoto.github.io/jm-website/admin/", "_blank", "noopener");
       return;
     }
   } catch (err) {
-    status("Direct send needs Admin login. Saving a folder zip instead. " + (err && err.message ? err.message : ""));
+    status("Could not sign in. Downloading a zip instead.");
   }
   try {
     const n = await zipTicked("inbox/" + stamp, "inbox-" + stamp);
-    if (n) window.open("https://moriphoto.github.io/jm-website/admin/media.html", "_blank", "noopener");
+    if (n) status(n + " pictures in the zip. The website did not take them.");
   } catch (err2) {
-    status("Ceramics pack failed: " + (err2 && err2.message ? err2.message : "error"));
+    status("To media failed. " + (err2 && err2.message ? err2.message : ""));
   }
 };

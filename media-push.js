@@ -16,28 +16,21 @@
   }
 
   function ensureIdentity() {
-    if (!window.netlifyIdentity) return Promise.reject(new Error("Identity missing"));
-    try {
-      netlifyIdentity.init({ APIUrl: IDENTITY_API });
-    } catch (e) {}
+    if (!window.netlifyIdentity) return Promise.reject(new Error("No sign-in on this page"));
+    try { netlifyIdentity.init({ APIUrl: IDENTITY_API }); } catch (e) {}
     if (token()) return Promise.resolve(token());
     return new Promise(function (resolve, reject) {
       var done = false;
-      function ok() {
+      function finish(err, t) {
         if (done) return;
         done = true;
-        var t = token();
         if (t) resolve(t);
-        else reject(new Error("Not signed in"));
+        else reject(err || new Error("No sign-in"));
       }
-      netlifyIdentity.on("login", ok);
-      netlifyIdentity.open("login");
-      setTimeout(function () {
-        if (!done) {
-          done = true;
-          reject(new Error("Sign in to Admin first, then try again"));
-        }
-      }, 120000);
+      netlifyIdentity.on("login", function () { finish(null, token()); });
+      try { netlifyIdentity.open("login"); }
+      catch (e) { finish(new Error("Sign-in box did not open")); return; }
+      setTimeout(function () { finish(new Error("Sign-in did not finish")); }, 15000);
     });
   }
 
@@ -59,9 +52,10 @@
 
   async function putGit(path, b64, message, t) {
     var url = GIT + "/contents/" + path;
+    var opts = { headers: headers(t), credentials: "include", mode: "cors" };
     var sha;
     try {
-      var prev = await fetch(url + "?ref=" + BRANCH, { headers: headers(t), credentials: "include", mode: "cors" });
+      var prev = await fetch(url + "?ref=" + BRANCH, opts);
       if (prev.ok) {
         var j = await prev.json();
         sha = j.sha;
@@ -69,10 +63,24 @@
     } catch (e) {}
     var body = { message: message, content: b64, branch: BRANCH };
     if (sha) body.sha = sha;
-    var res = await fetch(url, { method: "PUT", headers: headers(t), body: JSON.stringify(body), credentials: "include", mode: "cors" });
-    if (!res.ok) {
-      var txt = await res.text();
-      throw new Error(res.status + " " + txt.slice(0, 180));
+    var ctrl = new AbortController();
+    var timer = setTimeout(function () { ctrl.abort(); }, 20000);
+    var res;
+    try {
+      res = await fetch(url, {
+        method: "PUT",
+        headers: headers(t),
+        body: JSON.stringify(body),
+        credentials: "include",
+        mode: "cors",
+        signal: ctrl.signal
+      });
+    } finally {
+      clearTimeout(timer);
+    }
+    if (!res || !res.ok) {
+      var txt = res ? await res.text() : "no reply";
+      throw new Error((res ? res.status : "0") + " " + txt.slice(0, 180));
     }
   }
 

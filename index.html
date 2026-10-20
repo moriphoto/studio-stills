@@ -18,7 +18,9 @@
       --live: #39ff14;
       --radius: 16px;
     }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    * { box-sizing: border-box; }
+    body, h1, p { margin: 0; }
+    #netlify-identity-widget { z-index: 100000; }
     body {
       background: var(--ink);
       color: var(--ink-text);
@@ -48,7 +50,17 @@
     }
     .cam svg, a.icon svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.6; }
     .secondary .ghost { height: 40px; padding: 0 14px; border-radius: 12px; }
-    #moreBtn { margin-left: auto; color: var(--mute); }
+    #moreBtn { margin-left: auto; }
+    button.opt {
+      color: #ff4d4d;
+      border-color: #ff4d4d;
+      background: transparent;
+    }
+    button.opt.on {
+      color: var(--live);
+      border-color: var(--live);
+      box-shadow: 0 0 12px rgba(57,255,20,.4);
+    }
     #more {
       background: var(--panel);
       border: 1px solid var(--line);
@@ -86,7 +98,6 @@
     .icon { width: 36px; height: 36px; padding: 0; display: inline-flex; align-items: center; justify-content: center; }
     .icon svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.7; }
     a.icon { text-decoration: none; color: #fff; }
-    #rmBrush.on { color: #ff3b3b; border-color: #ff3b3b; box-shadow: 0 0 12px rgba(255,59,59,.4); }
     #files, #cam { position: absolute; width: 0; height: 0; opacity: 0; pointer-events: none; }
     #calTop { width: 28px; height: 28px; padding: 0; border: 1px solid #fff; background: none; cursor: pointer; }
 
@@ -112,7 +123,12 @@
       padding: 8px 10px;
       border-radius: 8px;
       cursor: pointer;
-      color: var(--mute);
+      color: #ff4d4d;
+      border: 1px solid #ff4d4d;
+    }
+    .seg label.t:has(input:checked) {
+      color: var(--live);
+      border-color: var(--live);
     }
     .seg input { accent-color: var(--gold); }
     .sliders { display: flex; flex-direction: column; gap: 10px; }
@@ -158,7 +174,7 @@
       vertical-align: -2px;
       background: #1a1a1a;
     }
-    #pickTop.on, #pickBase.on { color: var(--gold); border-color: var(--gold); box-shadow: none; }
+    #rmBrush.on { color: var(--live); border-color: var(--live); }
     #cal { padding: 16px 28px 24px; border-bottom: 1px solid var(--line); }
     #calSrc, #calPrev {
       width: 100%;
@@ -220,8 +236,8 @@
       <input id="cam" type="file" accept="image/*" capture="environment">
     </div>
     <div class="secondary">
-      <button class="ghost" id="calibrate" type="button">Calibrate</button>
-      <button class="ghost" id="moreBtn" type="button">More</button>
+      <button class="ghost opt" id="calibrate" type="button">Calibrate</button>
+      <button class="ghost opt" id="moreBtn" type="button">More</button>
     </div>
     <div id="more" hidden>
       <div class="seg">
@@ -239,7 +255,7 @@
         </div>
       </div>
       <div class="finish-row">
-        <button class="ghost" id="selAll" type="button">All</button>
+        <button class="ghost opt" id="selAll" type="button">All</button>
         <button class="ghost" id="reset" type="button">Reset</button>
         <button class="ghost" id="dl" type="button">Singles</button>
         <button class="ghost" id="dlFolder" type="button">Folder</button>
@@ -255,9 +271,9 @@
     <p class="k">Calibrate</p>
     <p class="lead">Tap the photo for the cove. The swatch is there if you want a set colour instead.</p>
     <div class="cal-opt">
-      <button type="button" class="ghost" id="pickTop">Top <i id="topDot"></i></button>
-      <button type="button" class="ghost on" id="pickBase">Base <i id="baseDot"></i></button>
-      <button type="button" class="ghost" id="calColorOn">Swatch</button>
+      <button type="button" class="ghost opt" id="pickTop">Top <i id="topDot"></i></button>
+      <button type="button" class="ghost opt on" id="pickBase">Base <i id="baseDot"></i></button>
+      <button type="button" class="ghost opt" id="calColorOn">Swatch</button>
       <label class="t" id="calTopWrap" hidden>Colour <input id="calTop" type="color" value="#1a1a1a" title="Top of the cove"></label>
     </div>
     <p class="k" id="calHint">Tap the colour around the base.</p>
@@ -274,7 +290,7 @@
   <section id="heroWrap" hidden>
     <img id="hero" alt="still">
     <div class="retouch">
-      <button class="ghost" id="rmBrush" type="button">Remove</button>
+      <button class="ghost opt" id="rmBrush" type="button">Remove</button>
       <button class="gold" id="applyEdit" type="button">Keep</button>
     </div>
   </section>

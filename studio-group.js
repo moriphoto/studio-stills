@@ -53,17 +53,16 @@
   }
 
   function drawShadow(ctx, s, dx, dy, dw, dh, footY) {
-    const ox = dw * 0.045;
     ctx.save();
-    ctx.filter = "blur(14px)";
-    ctx.globalAlpha = 0.85;
-    ctx.drawImage(s.shadow, dx + ox, dy + dh * 0.01, dw * 1.04, dh);
+    ctx.filter = "blur(10px)";
+    ctx.globalAlpha = 0.72;
+    ctx.drawImage(s.shadow, dx + dw * 0.03, dy + 2, dw, dh);
     ctx.restore();
     ctx.save();
-    ctx.fillStyle = "rgba(16,14,12,0.42)";
-    ctx.filter = "blur(7px)";
+    ctx.fillStyle = "rgba(30,26,22,0.28)";
+    ctx.filter = "blur(6px)";
     ctx.beginPath();
-    ctx.ellipse(dx + dw * 0.54, footY - 3, Math.max(14, dw * 0.3), Math.max(6, dh * 0.028), 0, 0, Math.PI * 2);
+    ctx.ellipse(dx + dw * 0.5, footY - 2, Math.max(10, dw * 0.22), Math.max(4, dh * 0.018), 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
   }
@@ -105,13 +104,6 @@
     out.height = H;
     const ctx = out.getContext("2d");
     paintPlate(ctx);
-    ctx.save();
-    ctx.fillStyle = "rgba(12,11,10,0.22)";
-    ctx.filter = "blur(28px)";
-    ctx.beginPath();
-    ctx.ellipse(W * 0.5, H * 0.8, W * 0.34, H * 0.06, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
     drawRow(ctx, back, scale, backFoot);
     drawRow(ctx, front, scale, H * 0.92);
     return out;

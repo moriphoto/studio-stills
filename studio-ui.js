@@ -126,6 +126,27 @@ if (dlFolder) dlFolder.onclick = async function () {
   }
 };
 
+const shareLink = document.getElementById("shareLink");
+if (shareLink) shareLink.onclick = async function () {
+  const picked = tickedFramed();
+  if (!picked.length) {
+    status(items.length ? "Tick a finished picture, then Link." : "Add pictures, then Process.");
+    return;
+  }
+  shareLink.classList.add("on");
+  const stamp = packStamp();
+  status(picked.length === 1 ? "Making a single link…" : "Making a slide link…");
+  try {
+    if (typeof pushShareSet !== "function") throw new Error("Link is not loaded");
+    const url = await pushShareSet(picked, stamp, status);
+    try { await navigator.clipboard.writeText(url); } catch (e) {}
+    status((picked.length === 1 ? "Single" : "Slide") + " link copied. It can take a minute to open. " + url);
+  } catch (err) {
+    shareLink.classList.remove("on");
+    status("Link was not saved. " + (err && err.message ? err.message : "Sign in and try again."));
+  }
+};
+
 const dlCeramics = document.getElementById("dlCeramics");
 if (dlCeramics) dlCeramics.onclick = async function () {
   const picked = tickedFramed();

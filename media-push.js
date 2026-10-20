@@ -151,6 +151,43 @@
     return files.length;
   };
 
+  function pieceTitle(name) {
+    var t = String(name || "Piece").replace(/\.[a-z0-9]+$/i, "");
+    t = t.replace(/-1920x1080$/i, "").replace(/-1920$/i, "").replace(/[-_]+/g, " ").trim();
+    if (!t || t.toLowerCase() === "collection") return "Collection";
+    return t.charAt(0).toUpperCase() + t.slice(1);
+  }
+
+  window.pushShareSet = async function (picked, stamp, onStatus) {
+    var say = onStatus || function () {};
+    say("Sign in with the ceramics admin if a box opens.");
+    var t = await ensureIdentity();
+    var files = [];
+    var pieces = [];
+    for (var i = 0; i < picked.length; i++) {
+      var item = picked[i];
+      say("Preparing " + (i + 1) + " of " + picked.length + "…");
+      var blob = await toBlob(item.framed);
+      var file = String(i + 1).padStart(2, "0") + ".jpg";
+      files.push({ path: "jm-website/images/share/" + stamp + "/" + file, b64: await blobToB64(blob) });
+      pieces.push({ file: file, title: pieceTitle(item.name) });
+    }
+    var manifest = JSON.stringify({ pieces: pieces });
+    files.push({
+      path: "jm-website/images/share/" + stamp + "/manifest.json",
+      b64: btoa(manifest)
+    });
+    say("Saving the link…");
+    try {
+      await commitAll(files, "Add client selection " + stamp + ".", t);
+    } catch (err) {
+      for (var j = 0; j < files.length; j++) {
+        await putGit(files[j].path, files[j].b64, "Share " + stamp + " " + (j + 1), t);
+      }
+    }
+    return "https://moriphoto.github.io/jm-website/share.html?set=" + stamp;
+  };
+
   if (window.netlifyIdentity) {
     try { netlifyIdentity.init({ APIUrl: IDENTITY_API }); } catch (e) {}
   }

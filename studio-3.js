@@ -177,27 +177,31 @@ document.getElementById("run").onclick = async () => {
     if (!assetsReady) assetsReady = loadAssets();
     await assetsReady;
     if (window.plateLocked && window.covePlate) groundEl = window.covePlate;
-    for (let i=0;i<items.length;i++){
-      status("Cutting " + (i+1) + " of " + items.length + "…");
+    const todo = [];
+    for (let i = 0; i < items.length; i++) if (items[i].selected !== false) todo.push(items[i]);
+    if (!todo.length) { status("Tick a picture underneath, then Process."); btn.disabled = false; return; }
+    for (let n = 0; n < todo.length; n++) {
+      const item = todo[n];
+      status("Cutting " + (n + 1) + " of " + todo.length + "…");
       await new Promise(r => setTimeout(r, 20));
       try {
-        items[i].cut = await cutFromFile(items[i].file, bar, status);
-        items[i].framed = items[i].cut.canvas;
-        items[i].origImg = await loadImage(items[i].file);
-        if (items[i].framed.width !== W || items[i].framed.height !== H) {
-          items[i].cut = forceFrame(items[i].cut);
-          items[i].framed = items[i].cut.canvas;
+        item.cut = await cutFromFile(item.file, bar, status);
+        item.framed = item.cut.canvas;
+        item.origImg = await loadImage(item.file);
+        if (item.framed.width !== W || item.framed.height !== H) {
+          item.cut = forceFrame(item.cut);
+          item.framed = item.cut.canvas;
         }
-        items[i].processedUrl = URL.createObjectURL(await toBlob(items[i].framed));
-        showHero(items[i]);
+        item.processedUrl = URL.createObjectURL(await toBlob(item.framed));
+        showHero(item);
       } catch (one) {
-        status("Skipped " + items[i].name + ": " + (one && one.message ? one.message : "error"));
+        status("Skipped " + item.name + ": " + (one && one.message ? one.message : "error"));
         continue;
       }
       render();
     }
-    const ok = items.filter(x => x.framed).length;
-    status(ok ? ("Done — " + ok + " at " + W + " × " + H + ".") : "Cut failed. Use the original JPEG.");
+    const ok = todo.filter(function (x) { return x.framed; }).length;
+    status(ok ? ("Done — " + ok + " of " + todo.length + " at " + W + " × " + H + ".") : "Cut failed. Use the original JPEG.");
   } catch (err) {
     status("Process failed: " + (err && err.message ? err.message : "open Chrome console"));
   }

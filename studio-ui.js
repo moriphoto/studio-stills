@@ -33,44 +33,9 @@ const rmBtn = document.getElementById("rmBrush");
 if (rmBtn) rmBtn.onclick = function () { setTool(window.removeOn ? "" : "remove"); };
 const setBtn = document.getElementById("applyEdit");
 if (setBtn) setBtn.onclick = function () { setCleanup(activeItem); };
-function paintAll() {
-  const btn = document.getElementById("selAll");
-  if (!btn) return;
-  const allOn = items.length > 0 && items.every(function (it) { return it.selected !== false; });
-  btn.classList.toggle("on", allOn);
+function chosen() {
+  return items.filter(function (it) { return it.selected !== false; });
 }
-const selAll = document.getElementById("selAll");
-if (selAll) selAll.onclick = function () {
-  if (!items.length) { status("Add pictures first."); return; }
-  items.forEach(function (it) { it.selected = true; });
-  render();
-  status(items.length + " ticked. Green square means it is included.");
-};
-
-const heroEl = document.getElementById("hero");
-if (heroEl) {
-  heroEl.onpointerdown = function (e) {
-    if (!activeItem || !window.removeOn) return;
-    e.preventDefault();
-    const paint = function (ev) {
-      const rect = heroEl.getBoundingClientRect();
-      const fw = activeItem.framed ? activeItem.framed.width : 1920;
-      const fh = activeItem.framed ? activeItem.framed.height : 1080;
-      const x = (ev.clientX - rect.left) / rect.width * fw;
-      const y = (ev.clientY - rect.top) / rect.height * fh;
-      stampRemove(activeItem, x, y);
-    };
-    paint(e);
-    const move = function (ev) { paint(ev); };
-    const up = function () {
-      window.removeEventListener("pointermove", move);
-      window.removeEventListener("pointerup", up);
-    };
-    window.addEventListener("pointermove", move);
-    window.addEventListener("pointerup", up);
-  };
-}
-
 function render() {
   const grid = document.getElementById("grid");
   grid.innerHTML = "";
@@ -80,15 +45,17 @@ function render() {
     el.innerHTML =
       "<img src=\"" + (item.processedUrl || item.url) + "\" alt=\"\">" +
       "<div class=\"m\">" +
-      "<label class=\"pick\"><input type=\"checkbox\" " + (item.selected !== false ? "checked" : "") + ">" +
-      "<i class=\"tick" + (item.selected !== false ? " on" : "") + "\"></i> " + item.name + "</label>" +
+      "<button type=\"button\" class=\"tick" + (item.selected !== false ? " on" : "") + "\" aria-label=\"Include\"></button>" +
+      "<span class=\"pick\">" + item.name + "</span>" +
       "<button type=\"button\" class=\"kill\" title=\"Delete\">×</button>" +
       "</div>";
     el.querySelector("img").onclick = function () { showHero(item); render(); };
-    el.querySelector("input").onchange = function (e) {
+    el.querySelector(".tick").onclick = function (e) {
       e.stopPropagation();
-      item.selected = e.target.checked;
-      paintAll();
+      item.selected = item.selected === false;
+      render();
+      const n = chosen().length;
+      status(n ? (n + " ticked.") : "None ticked.");
     };
     el.querySelector(".kill").onclick = function (e) {
       e.stopPropagation();
@@ -103,20 +70,18 @@ function render() {
     };
     grid.appendChild(el);
   });
-  paintAll();
 }
 
 document.getElementById("dl").onclick = async () => {
-  let n = 0;
-  for (const item of items) {
-    if (!item.framed) continue;
-    if (item.selected === false) continue;
+  const picked = tickedFramed();
+  if (!picked.length) { status("Tick a finished picture, then Singles."); return; }
+  const blobs = [];
+  for (const item of picked) {
     const tag = item.framed.width + "x" + item.framed.height;
-    download(await toBlob(item.framed), item.name + "-" + tag + ".jpg");
-    n++;
-    await new Promise(r => setTimeout(r, 250));
+    blobs.push({ blob: await toBlob(item.framed), name: item.name + "-" + tag + ".jpg" });
   }
-  if (!n) status("Tick a processed still, then download.");
+  blobs.forEach(function (file) { download(file.blob, file.name); });
+  status(blobs.length + " single" + (blobs.length === 1 ? "" : "s") + " downloading.");
 };
 
 function packStamp() {
@@ -155,7 +120,7 @@ if (dlFolder) dlFolder.onclick = async function () {
   try {
     const stamp = packStamp();
     const n = await zipTicked("stills-" + stamp, "stills-" + stamp);
-    if (n) status(n + " stills in a folder zip. Unzip on the computer or phone.");
+    if (n) status(n + " ticked picture" + (n === 1 ? "" : "s") + " in one zip.");
   } catch (err) {
     status("Folder zip failed: " + (err && err.message ? err.message : "error"));
   }
@@ -163,20 +128,17 @@ if (dlFolder) dlFolder.onclick = async function () {
 
 const dlCeramics = document.getElementById("dlCeramics");
 if (dlCeramics) dlCeramics.onclick = async function () {
-  const picked = items.filter(function (it) { return it.framed; });
-  const waiting = items.length - picked.length;
+  const picked = tickedFramed();
   if (!picked.length) {
-    status(items.length ? "Process first. To media only sends finished pictures." : "Add pictures, then Process.");
+    status(items.length ? "Tick a finished picture, then To media." : "Add pictures, then Process.");
     return;
   }
-  items.forEach(function (it) { if (it.framed) it.selected = true; });
-  render();
   dlCeramics.classList.add("on");
   const stamp = packStamp();
-  status("Packing " + picked.length + " of " + items.length + "…");
+  status("Packing " + picked.length + "…");
   try {
     const n = await zipTicked("inbox/" + stamp, "inbox-" + stamp);
-    status(n + " of " + items.length + " downloaded in one zip." + (waiting ? " " + waiting + " not processed yet." : ""));
+    status(n + " ticked picture" + (n === 1 ? "" : "s") + " in one zip.");
   } catch (err) {
     dlCeramics.classList.remove("on");
     status("Could not pack them. " + (err && err.message ? err.message : ""));

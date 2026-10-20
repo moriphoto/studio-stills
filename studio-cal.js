@@ -15,6 +15,10 @@
       if (!el) return;
       if (on) el.classList.add("on"); else el.classList.remove("on");
     });
+    const use = $("calUse");
+    if (use) use.textContent = on ? "Plate on" : "Use this plate";
+    const prev = $("calPrev");
+    if (prev) prev.classList.toggle("armed", !!on);
   }
   function hexRgb(hex, y) {
     const h = String(hex || "#000000").replace("#", "");

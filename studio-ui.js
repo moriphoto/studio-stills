@@ -44,7 +44,7 @@ if (selAll) selAll.onclick = function () {
   if (!items.length) { status("Add pictures first."); return; }
   items.forEach(function (it) { it.selected = true; });
   render();
-  status(items.length + " ticked.");
+  status(items.length + " ticked. Green square means it is included.");
 };
 
 const heroEl = document.getElementById("hero");
@@ -80,7 +80,8 @@ function render() {
     el.innerHTML =
       "<img src=\"" + (item.processedUrl || item.url) + "\" alt=\"\">" +
       "<div class=\"m\">" +
-      "<label class=\"pick\"><input type=\"checkbox\" " + (item.selected !== false ? "checked" : "") + "> " + item.name + "</label>" +
+      "<label class=\"pick\"><input type=\"checkbox\" " + (item.selected !== false ? "checked" : "") + ">" +
+      "<i class=\"tick" + (item.selected !== false ? " on" : "") + "\"></i> " + item.name + "</label>" +
       "<button type=\"button\" class=\"kill\" title=\"Delete\">×</button>" +
       "</div>";
     el.querySelector("img").onclick = function () { showHero(item); render(); };
@@ -163,31 +164,21 @@ if (dlFolder) dlFolder.onclick = async function () {
 const dlCeramics = document.getElementById("dlCeramics");
 if (dlCeramics) dlCeramics.onclick = async function () {
   const picked = items.filter(function (it) { return it.framed; });
-  const waiting = items.filter(function (it) { return !it.framed; });
+  const waiting = items.length - picked.length;
   if (!picked.length) {
-    status(waiting.length ? "Process the pictures first, then To media." : "Add pictures, then To media.");
+    status(items.length ? "Process first. To media only sends finished pictures." : "Add pictures, then Process.");
     return;
   }
   items.forEach(function (it) { if (it.framed) it.selected = true; });
   render();
   dlCeramics.classList.add("on");
-  status("To media… " + picked.length + " of " + items.length + ".");
   const stamp = packStamp();
-  try {
-    if (typeof window.pushStillsToMedia === "function") {
-      const n = await window.pushStillsToMedia(picked, stamp, status);
-      status(n + " of " + items.length + " in Media, folder inbox/" + stamp + ".");
-      window.open("https://moriphoto.github.io/jm-website/admin/", "_blank", "noopener");
-      return;
-    }
-  } catch (err) {
-    dlCeramics.classList.remove("on");
-    status("Could not sign in. Downloading a zip of " + picked.length + ".");
-  }
+  status("Packing " + picked.length + " of " + items.length + "…");
   try {
     const n = await zipTicked("inbox/" + stamp, "inbox-" + stamp);
-    if (n) status(n + " of " + items.length + " in the zip. The website did not take them.");
-  } catch (err2) {
-    status("To media failed. " + (err2 && err2.message ? err2.message : ""));
+    status(n + " of " + items.length + " downloaded in one zip." + (waiting ? " " + waiting + " not processed yet." : ""));
+  } catch (err) {
+    dlCeramics.classList.remove("on");
+    status("Could not pack them. " + (err && err.message ? err.message : ""));
   }
 };

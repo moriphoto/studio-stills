@@ -210,7 +210,9 @@
     article img { width: 100%; aspect-ratio: 16/9; object-fit: contain; background: #000; display: block; }
     article .m { padding: 8px; font-size: 11px; display: flex; align-items: center; gap: 8px; }
     article .pick { flex: 1; display: flex; align-items: center; gap: 6px; color: #ccc; min-width: 0; overflow: hidden; }
-    article .pick input { width: 22px; height: 22px; accent-color: #39ff14; flex: none; }
+    article .pick input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+    article .tick { width: 16px; height: 16px; border-radius: 4px; border: 2px solid #ff4d4d; display: inline-block; flex: none; }
+    article .tick.on { background: #39ff14; border-color: #39ff14; }
     article .kill { margin-left: auto; background: none; border: 0; color: #8a8a8a; font-size: 16px; line-height: 1; padding: 0 4px; cursor: pointer; }
     article .kill:hover { color: #ff5a5a; }
     #status { color: var(--gold); font-size: 13px; }

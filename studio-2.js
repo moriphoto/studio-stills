@@ -140,55 +140,97 @@ function toCanvas(src, w, h) {
   return c;
 }
 
+function blurDensity(src, w, h, radius) {
+  const r = Math.max(1, radius | 0);
+  const tmp = new Float32Array(src.length);
+  const dst = new Float32Array(src.length);
+  for (let y = 0; y < h; y++) {
+    let sum = 0;
+    const row = y * w;
+    for (let k = -r; k <= r; k++) sum += src[row + Math.min(w - 1, Math.max(0, k))];
+    for (let x = 0; x < w; x++) {
+      tmp[row + x] = sum / (r * 2 + 1);
+      sum -= src[row + Math.max(0, x - r)];
+      sum += src[row + Math.min(w - 1, x + r + 1)];
+    }
+  }
+  for (let x = 0; x < w; x++) {
+    let sum = 0;
+    for (let k = -r; k <= r; k++) sum += tmp[Math.min(h - 1, Math.max(0, k)) * w + x];
+    for (let y = 0; y < h; y++) {
+      dst[y * w + x] = sum / (r * 2 + 1);
+      sum -= tmp[Math.max(0, y - r) * w + x];
+      sum += tmp[Math.min(h - 1, y + r + 1) * w + x];
+    }
+  }
+  src.set(dst);
+}
+
 function keepShadow(cutCanvas, origImg) {
   if (!origImg) return;
-  const dir = Number(window.shadowDir) || 0;
+  const dir = (typeof detectShadowDir === "function") ? detectShadowDir(origImg, cutCanvas) : (Number(window.shadowDir) || 0);
+  window.shadowDir = dir;
+  const soft = (typeof shadowSoft === "function") ? shadowSoft() : 0.55;
   const w = cutCanvas.width, h = cutCanvas.height;
   const orig = toCanvas(origImg, w, h);
+  const od = orig.getContext("2d", { willReadFrequently: true }).getImageData(0, 0, w, h).data;
   const ctx = cutCanvas.getContext("2d", { willReadFrequently: true });
   const cut = ctx.getImageData(0, 0, w, h);
-  const od = orig.getContext("2d", { willReadFrequently: true }).getImageData(0, 0, w, h).data;
   const d = cut.data;
   const bb = bboxFromAlpha(cutCanvas);
-  const R = Math.max(18, Math.round(bb.w * (0.12 + Math.abs(dir) * 0.06)));
-  const y0 = Math.floor(bb.y + bb.h * 0.72);
-  const y1 = Math.min(h - 1, Math.ceil(bb.y + bb.h + R));
-  const cx = bb.x + bb.w / 2 + dir * bb.w * 0.36;
-  const spread = Math.max(1, bb.w * 0.55 + R);
-  const band = Math.max(36, Math.round(w * 0.055));
+  let paper = 0, pn = 0;
+  const yS0 = Math.max(0, Math.floor(bb.y + bb.h * 0.75));
+  const yS1 = Math.min(h - 1, Math.ceil(bb.y + bb.h + bb.w * 0.16));
+  for (let y = yS0; y <= yS1; y++) {
+    for (let x = 0; x < Math.min(20, w); x++) {
+      const i = (y * w + x) * 4;
+      paper += luma(od[i], od[i + 1], od[i + 2]); pn++;
+    }
+    for (let x = Math.max(0, w - 20); x < w; x++) {
+      const i = (y * w + x) * 4;
+      paper += luma(od[i], od[i + 1], od[i + 2]); pn++;
+    }
+  }
+  paper = paper / Math.max(1, pn);
+  const mask = new Float32Array(w * h);
+  const cx = bb.x + bb.w / 2;
+  const reach = Math.max(18, bb.w * (0.2 + Math.abs(dir) * 0.1));
+  const y0 = Math.floor(bb.y + bb.h * 0.58);
+  const y1 = Math.min(h - 1, Math.ceil(bb.y + bb.h + reach));
+  const spread = Math.max(8, bb.w * (0.58 + Math.abs(dir) * 0.22));
+  const base = bb.y + bb.h;
   for (let y = y0; y <= y1; y++) {
-    const fade = Math.pow(1 - (y - y0) / Math.max(1, y1 - y0), 0.75);
-    let paper = 0, pn = 0;
-    for (let x = 0; x < Math.min(w, 16); x++) {
-      const i = (y * w + x) * 4;
-      paper += luma(od[i], od[i + 1], od[i + 2]); pn++;
+    const down = (y - base) / Math.max(1, reach);
+    const fade = down <= 0 ? 0.85 : Math.max(0, 1 - down);
+    for (let x = 0; x < w; x++) {
+      const p = y * w + x;
+      const i = p * 4;
+      if (d[i + 3] > 200) continue;
+      const along = (x - cx) / spread - dir * 0.6;
+      if (along * along > 1) continue;
+      const across = Math.max(0, 1 - along * along);
+      const L = luma(od[i], od[i + 1], od[i + 2]);
+      let density = (paper - L) / (24 + soft * 16);
+      if (density < 0.04) density = 0;
+      if (density > 1) density = 1;
+      const contact = fade * across * 0.2 * (1 - soft * 0.35);
+      mask[p] = Math.min(1, density * fade * across + contact);
     }
-    for (let x = Math.max(0, w - 16); x < w; x++) {
-      const i = (y * w + x) * 4;
-      paper += luma(od[i], od[i + 1], od[i + 2]); pn++;
-    }
-    paper = paper / Math.max(1, pn);
-    const xA = Math.max(0, Math.round(cx - spread));
-    const xB = Math.min(w - 1, Math.round(cx + spread));
-    const soft = shadowSoft();
-    for (let x = xA; x <= xB; x++) {
-      const i = (y * w + x) * 4;
-      if (d[i + 3] > 230) continue;
-      const oL = luma(od[i], od[i + 1], od[i + 2]);
-      const gap = paper - oL;
-      if (gap < 8) continue;
-      const dx = (x - cx) / spread;
-      if (dx * dx > 1) continue;
-      let edge = 1;
-      if (x < band) edge *= x / band;
-      if (x > w - 1 - band) edge *= (w - 1 - x) / band;
-      if (y > h - 1 - band) edge *= (h - 1 - y) / band;
-      const oa = Math.round(Math.min(140, fade * edge * (1 - dx * dx) * Math.min(70, gap) * 1.6) * (1 - soft * 0.7));
-      if (oa < 14) continue;
-      if (oa <= d[i + 3]) continue;
-      d[i] = od[i]; d[i + 1] = od[i + 1]; d[i + 2] = od[i + 2];
-      d[i + 3] = oa;
-    }
+  }
+  const radius = Math.max(2, Math.round(4 + soft * 9));
+  blurDensity(mask, w, h, radius);
+  blurDensity(mask, w, h, Math.max(2, Math.round(radius * 0.6)));
+  for (let p = 0; p < w * h; p++) {
+    const m = mask[p];
+    if (m < 0.025) continue;
+    const i = p * 4;
+    if (d[i + 3] > 200) continue;
+    const a = Math.round(Math.min(150, m * (145 - soft * 70)));
+    if (a < 6 || a <= d[i + 3]) continue;
+    d[i] = 26;
+    d[i + 1] = 24;
+    d[i + 2] = 22;
+    d[i + 3] = a;
   }
   ctx.putImageData(cut, 0, 0);
 }

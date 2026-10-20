@@ -24,39 +24,46 @@
       color: var(--ink-text);
       font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
     }
-    header { padding: 18px 22px 12px; border-bottom: 1px solid var(--line); display: flex; align-items: baseline; gap: 14px; }
-    h1 { font-size: 22px; font-weight: 600; letter-spacing: -.02em; }
-    .lead { color: var(--mute); font-size: 13px; }
-
-    .deck {
-      display: grid;
-      grid-template-columns: 1.15fr .85fr;
-      gap: 10px;
-      padding: 12px 22px 0;
+    header {
+      padding: 22px 18px 0;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      max-width: 520px;
+      margin: 0 auto;
     }
-    @media (max-width: 860px) { .deck { grid-template-columns: 1fr; padding: 12px 14px 0; } }
+    h1 { font-size: 28px; font-weight: 560; letter-spacing: -.03em; }
+    .lead { color: var(--mute); font-size: 13px; margin-top: 4px; }
 
-    .card {
+    .simple { max-width: 520px; margin: 0 auto; padding: 18px 18px 0; display: flex; flex-direction: column; gap: 10px; }
+    .primary, .secondary, .retouch, .finish-row { display: flex; gap: 8px; align-items: center; }
+    .finish-row { flex-wrap: wrap; }
+    .primary .add, .primary .go { flex: 1; height: 52px; border-radius: 12px; font-size: 16px; font-weight: 600; letter-spacing: 0; display: inline-flex; align-items: center; justify-content: center; }
+    .primary .go { background: var(--gold); color: #14120c; border: 0; }
+    .cam {
+      width: 52px; height: 52px; flex: none; border-radius: 12px;
+      background: var(--panel); color: #fff; border: 1px solid var(--line);
+      display: inline-flex; align-items: center; justify-content: center;
+    }
+    .cam svg, a.icon svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.6; }
+    .secondary .ghost { height: 40px; padding: 0 14px; border-radius: 12px; }
+    #moreBtn { margin-left: auto; color: var(--mute); }
+    #more {
       background: var(--panel);
       border: 1px solid var(--line);
       border-radius: var(--radius);
       padding: 14px;
       display: flex;
       flex-direction: column;
-      gap: 10px;
+      gap: 12px;
     }
-    .section-title {
-      font-size: 10px;
-      font-weight: 700;
-      letter-spacing: .16em;
-      text-transform: uppercase;
-      color: var(--mute);
-    }
-    .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-    .status-row { padding: 8px 28px 0; min-height: 28px; }
-    @media (max-width: 720px) { .status-row { padding: 8px 16px 0; } }
+    #more[hidden] { display: none; }
 
-    button, .btn { font: inherit; cursor: pointer; }
+    .status-row { max-width: 520px; margin: 0 auto; padding: 10px 18px 0; min-height: 22px; }
+
+    button, .btn, label.btn { font: inherit; cursor: pointer; }
+    .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
     .btn, .ghost, .gold {
       padding: 8px 12px;
       font-size: 11px;
@@ -130,20 +137,16 @@
     }
 
     .drop {
-      margin: 12px 22px;
-      border: 1px dashed rgba(255,255,255,.18);
-      border-radius: var(--radius);
-      min-height: 52px;
+      max-width: 484px;
+      margin: 8px auto 0;
+      min-height: 36px;
       display: flex;
       align-items: center;
       justify-content: center;
-      color: var(--mute);
+      color: #6d6d6d;
       cursor: pointer;
-      background: rgba(20,24,30,.5);
-      font-size: 13px;
+      font-size: 12px;
     }
-    .drop:hover { border-color: var(--gold); color: #ccc; }
-    @media (max-width: 720px) { .drop { margin: 16px; } }
 
     .cal-opt { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 12px 0; }
     #cal { padding: 16px 28px 24px; border-bottom: 1px solid var(--line); }
@@ -160,23 +163,22 @@
     #cal .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px; }
     @media (max-width: 720px) { #cal { padding: 16px; } #cal .row { grid-template-columns: 1fr; } }
 
-    #heroWrap { padding: 12px 28px 8px; display: flex; gap: 12px; align-items: flex-start; }
-    @media (max-width: 720px) { #heroWrap { padding: 12px 16px; } }
-    #heroSide { display: flex; flex-direction: column; gap: 8px; }
+    #heroWrap { max-width: 520px; margin: 0 auto; padding: 14px 18px 8px; display: flex; flex-direction: column; gap: 10px; }
     #hero {
       width: 100%;
-      max-width: 960px;
-      max-height: 540px;
+      max-height: none;
       height: auto;
+      aspect-ratio: 16/9;
       object-fit: contain;
       display: block;
       background: #000;
       border: 1px solid var(--line);
-      border-radius: 8px;
+      border-radius: 14px;
     }
+    .retouch button { flex: 1; height: 48px; border-radius: 12px; font-size: 15px; font-weight: 600; letter-spacing: 0; }
+    #rmBrush.on { color: #ff3b3b; border-color: #ff3b3b; box-shadow: 0 0 12px rgba(255,59,59,.35); }
 
-    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); gap: 10px; padding: 0 28px 48px; }
-    @media (max-width: 720px) { .grid { padding: 0 16px 48px; } }
+    .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; max-width: 520px; margin: 0 auto; padding: 8px 18px 48px; }
     article { background: #111; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
     article img { width: 100%; aspect-ratio: 16/9; object-fit: contain; background: #000; display: block; }
     article .m { padding: 8px; font-size: 11px; display: flex; align-items: center; gap: 8px; }
@@ -188,29 +190,30 @@
 </head>
 <body>
   <header>
-    <h1>Cove</h1>
-    <p class="lead">Cut the object. Sit it on the graduated ground.</p>
+    <div>
+      <h1>Cove</h1>
+      <p class="lead">One object. One ground.</p>
+    </div>
+    <a class="ghost icon" id="home" href="https://moriphoto.github.io/jm-website/admin/" title="Admin" aria-label="Admin">
+      <svg viewBox="0 0 24 24"><path d="M4 11 L12 4 L20 11"/><path d="M7 10 V20 H17 V10"/></svg>
+    </a>
   </header>
 
-  <div class="deck">
-    <div class="card">
-      <div class="section-title">In</div>
-      <div class="row">
-        <label class="ghost icon" for="cam" title="Phone camera" aria-label="Phone camera">
-          <svg viewBox="0 0 24 24"><rect x="7" y="2" width="10" height="20" rx="2"/><circle cx="12" cy="10" r="2.4"/><path d="M10.2 17.5 h3.6"/></svg>
-        </label>
-        <label class="btn" for="files">Add JPEGs</label>
-        <input id="files" type="file" accept="image/jpeg,image/png,.jpg,.jpeg,.png,.webp" multiple>
-        <input id="cam" type="file" accept="image/*" capture="environment">
-        <button class="gold" id="calibrate">Calibrate</button>
-        <a class="ghost icon" id="home" href="https://moriphoto.github.io/jm-website/admin/" title="Admin" aria-label="Admin">
-          <svg viewBox="0 0 24 24"><path d="M4 11 L12 4 L20 11"/><path d="M7 10 V20 H17 V10"/></svg>
-        </a>
-      </div>
+  <div class="simple">
+    <div class="primary">
+      <label class="cam" for="cam" title="Phone camera" aria-label="Phone camera">
+        <svg viewBox="0 0 24 24"><rect x="7" y="2" width="10" height="20" rx="2"/><circle cx="12" cy="10" r="2.4"/><path d="M10.2 17.5 h3.6"/></svg>
+      </label>
+      <label class="btn add" for="files">Add</label>
+      <button class="go" id="run">Process</button>
+      <input id="files" type="file" accept="image/jpeg,image/png,.jpg,.jpeg,.png,.webp" multiple>
+      <input id="cam" type="file" accept="image/*" capture="environment">
     </div>
-
-    <div class="card">
-      <div class="section-title">Finish</div>
+    <div class="secondary">
+      <button class="ghost" id="calibrate" type="button">Calibrate</button>
+      <button class="ghost" id="moreBtn" type="button">More</button>
+    </div>
+    <div id="more" hidden>
       <div class="seg">
         <label class="t"><input type="radio" name="res" id="resWeb" checked> Web 1920</label>
         <label class="t"><input type="radio" name="res" id="resHigh"> High</label>
@@ -225,19 +228,18 @@
           <label class="t"><input id="edge" type="range" min="0" max="20" value="10"></label>
         </div>
       </div>
-      <div class="row">
-        <button class="ghost" id="selAll">All</button>
-        <button class="btn" id="run">Process</button>
-        <button class="ghost" id="reset">Reset</button>
-        <button class="ghost" id="dl">Singles</button>
-        <button class="ghost" id="dlFolder">Folder</button>
-        <button class="gold" id="dlCeramics">To media</button>
+      <div class="finish-row">
+        <button class="ghost" id="selAll" type="button">All</button>
+        <button class="ghost" id="reset" type="button">Reset</button>
+        <button class="ghost" id="dl" type="button">Singles</button>
+        <button class="ghost" id="dlFolder" type="button">Folder</button>
+        <button class="gold" id="dlCeramics" type="button">To media</button>
       </div>
     </div>
   </div>
 
   <div class="status-row"><span id="status"></span></div>
-  <div class="drop" id="drop">Drop JPEGs, or use the phone camera.</div>
+  <div class="drop" id="drop">Or drop pictures here</div>
 
   <section id="cal" hidden>
     <p class="k">Calibrate</p>
@@ -259,11 +261,9 @@
 
   <section id="heroWrap" hidden>
     <img id="hero" alt="still">
-    <div id="heroSide">
-      <button class="ghost icon" id="rmBrush" title="Remove" aria-label="Remove">
-        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"/><path d="M8 8 l8 8 M16 8 l-8 8"/></svg>
-      </button>
-      <button class="gold" id="applyEdit">Set</button>
+    <div class="retouch">
+      <button class="ghost" id="rmBrush" type="button">Remove</button>
+      <button class="gold" id="applyEdit" type="button">Keep</button>
     </div>
   </section>
 
@@ -282,6 +282,13 @@
   <script src="studio-cal.js"></script>
   <script src="admin-bridge.js"></script>
   <script src="media-push.js"></script>
+  <script>
+    document.getElementById("moreBtn").onclick = function () {
+      var m = document.getElementById("more");
+      m.hidden = !m.hidden;
+      this.classList.toggle("on", !m.hidden);
+    };
+  </script>
   <script type="module" src="ai-cut.js"></script>
 </body>
 </html>

@@ -27,7 +27,7 @@ function setTool(which) {
   const r = document.getElementById("rmBrush");
   if (r) r.classList.toggle("on", window.removeOn);
   toolCursor();
-  status(window.removeOn ? "Remove on. Paint the junk. SET bakes this still." : "Remove off.");
+  status(window.removeOn ? "Remove on. Paint the junk on the big picture. Keep saves this still." : "Remove off.");
 }
 const rmBtn = document.getElementById("rmBrush");
 if (rmBtn) rmBtn.onclick = function () { setTool(window.removeOn ? "" : "remove"); };

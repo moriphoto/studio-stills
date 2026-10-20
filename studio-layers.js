@@ -243,5 +243,5 @@ async function setCleanup(item) {
   item.processedUrl = URL.createObjectURL(await toBlob(item.framed));
   showHero(item);
   render();
-  status("Set. Cleanup baked into this still only.");
+  status("Kept. This still only.");
 }

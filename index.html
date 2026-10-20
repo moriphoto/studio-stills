@@ -148,7 +148,17 @@
       font-size: 12px;
     }
 
-    .cal-opt { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 12px 0; }
+    .cal-opt i {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      margin-left: 6px;
+      border-radius: 50%;
+      border: 1px solid rgba(255,255,255,.35);
+      vertical-align: -2px;
+      background: #1a1a1a;
+    }
+    #pickTop.on, #pickBase.on { color: var(--gold); border-color: var(--gold); box-shadow: none; }
     #cal { padding: 16px 28px 24px; border-bottom: 1px solid var(--line); }
     #calSrc, #calPrev {
       width: 100%;
@@ -243,12 +253,14 @@
 
   <section id="cal" hidden>
     <p class="k">Calibrate</p>
-    <p class="lead">Use this plate as it is. Turn Top colour on only if you want to tint the cove. Then click the floor.</p>
+    <p class="lead">Tap the photo for the cove. The swatch is there if you want a set colour instead.</p>
     <div class="cal-opt">
-      <button type="button" class="ghost" id="calColorOn">Top colour</button>
+      <button type="button" class="ghost" id="pickTop">Top <i id="topDot"></i></button>
+      <button type="button" class="ghost on" id="pickBase">Base <i id="baseDot"></i></button>
+      <button type="button" class="ghost" id="calColorOn">Swatch</button>
       <label class="t" id="calTopWrap" hidden>Colour <input id="calTop" type="color" value="#1a1a1a" title="Top of the cove"></label>
     </div>
-    <p class="k">Click the floor in this still</p>
+    <p class="k" id="calHint">Tap the colour around the base.</p>
     <div class="row">
       <div><img id="calSrc" alt="Pick floor"></div>
       <div id="calPrevWrap" hidden>

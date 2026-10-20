@@ -1,11 +1,13 @@
-/* Top swatch or click. Floor click. Clean plate, no muddy lift when black is chosen. */
+/* Top from the photo or a swatch. Base from the photo, beside the object. */
 (function () {
   let srcImg = null;
   let step = 0;
   let dark = null;
   let light = null;
+  let pickedTop = null;
   let plateCanvas = null;
   let colourOn = false;
+  let pickMode = "base";
   function $(id) { return document.getElementById(id); }
   function markLive(on) {
     ["calUse", "calibrate"].forEach(function (id) {
@@ -22,6 +24,11 @@
       b: parseInt(h.slice(4, 6), 16) || 0,
       y: y == null ? 0 : y
     };
+  }
+  function paintDot(id, c) {
+    const dot = $(id);
+    if (!dot || !c) return;
+    dot.style.background = "rgb(" + (c.r | 0) + "," + (c.g | 0) + "," + (c.b | 0) + ")";
   }
   function sample(img, clientX, clientY, el) {
     const rect = el.getBoundingClientRect();
@@ -116,8 +123,20 @@
   }
   function topStop() {
     if (colourOn && $("calTop")) return hexRgb($("calTop").value, 0);
+    if (pickedTop) return pickedTop;
     if (!srcImg || !srcImg.width) return hexRgb("#1a1a1a", 0);
     return samplePx(srcImg, srcImg.width * 0.5, srcImg.height * 0.06);
+  }
+  function setPickMode(mode) {
+    pickMode = mode === "top" ? "top" : "base";
+    const top = $("pickTop");
+    const base = $("pickBase");
+    if (top) top.classList.toggle("on", pickMode === "top");
+    if (base) base.classList.toggle("on", pickMode === "base");
+    const hint = $("calHint");
+    if (hint) hint.textContent = pickMode === "top"
+      ? "Tap a colour in the photo for the top of the cove."
+      : "Tap the colour around the base.";
   }
   function setColourOn(on) {
     colourOn = !!on;
@@ -125,11 +144,12 @@
     const wrap = $("calTopWrap");
     if (btn) btn.classList.toggle("on", colourOn);
     if (wrap) wrap.hidden = !colourOn;
-    if (light) {
-      dark = topStop();
-      rebuildFromStops();
+    if (colourOn && $("calTop")) {
+      dark = hexRgb($("calTop").value, 0);
+      paintDot("topDot", dark);
+      if (light) rebuildFromStops();
     }
-    status(colourOn ? "Top colour on. Pick a swatch, then click the floor." : "Top colour off. Use this plate, or click the floor.");
+    status(colourOn ? "Swatch on. That colour is the top. Then tap the base on the photo." : "Swatch off. Tap the photo instead.");
   }
   function restorePlate() {
     try {
@@ -149,25 +169,59 @@
     step = 1;
     light = null;
     dark = null;
+    pickedTop = null;
+    setPickMode("base");
     srcImg = new Image();
-    srcImg.onload = function () { status(colourOn ? "Pick a top colour, then click the floor." : "Use this plate, or click the floor."); };
+    srcImg.onload = function () {
+      status(pickMode === "top"
+        ? "Tap a colour in the photo for the top."
+        : "Tap the colour around the base. Top takes a colour from the photo too.");
+    };
     srcImg.src = item.url;
     if (plateCanvas || groundEl) previewPlate();
   }
   function onPick(e) {
     if (!srcImg || !srcImg.width) return;
     const sw = sample(srcImg, e.clientX, e.clientY, $("calSrc"));
-    light = sw; step = 2;
+    if (pickMode === "top") {
+      colourOn = false;
+      const btn = $("calColorOn");
+      const wrap = $("calTopWrap");
+      if (btn) btn.classList.remove("on");
+      if (wrap) wrap.hidden = true;
+      pickedTop = { r: sw.r, g: sw.g, b: sw.b, y: 0 };
+      dark = pickedTop;
+      paintDot("topDot", dark);
+      setPickMode("base");
+      status(light ? "Top taken from the photo." : "Top taken. Now tap the colour around the base.");
+      if (light) rebuildFromStops();
+      return;
+    }
+    light = sw;
+    step = 2;
+    paintDot("baseDot", light);
     dark = topStop();
+    paintDot("topDot", dark);
     rebuildFromStops();
+    status("Base taken from the photo. Use this plate if the cove looks right.");
   }
   restorePlate();
   if ($("calibrate")) $("calibrate").onclick = openCal;
   if ($("calSrc")) $("calSrc").onclick = onPick;
+  if ($("pickTop")) $("pickTop").onclick = function () {
+    setPickMode("top");
+    status("Tap a colour in the photo for the top of the cove.");
+  };
+  if ($("pickBase")) $("pickBase").onclick = function () {
+    setPickMode("base");
+    status("Tap the colour around the base.");
+  };
   if ($("calColorOn")) $("calColorOn").onclick = function () { setColourOn(!colourOn); };
   if ($("calTop")) $("calTop").oninput = function () {
     if (!colourOn) return;
     dark = hexRgb(this.value, 0);
+    colourOn = true;
+    paintDot("topDot", dark);
     if (light) rebuildFromStops();
   };
   if ($("calUse")) $("calUse").onclick = function () {

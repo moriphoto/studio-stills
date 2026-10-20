@@ -88,6 +88,7 @@
   function applyPlate(canvas, floorY) {
     plateCanvas = canvas;
     groundEl = canvas;
+    window.covePlate = canvas;
     window.plateLocked = true;
     window.autoCove = false;
     window.coveFloor = typeof floorY === "number" ? Math.min(0.94, Math.max(0.8, floorY)) : 0.91;
@@ -156,7 +157,12 @@
       const data = localStorage.getItem("cove-plate");
       if (!data) return;
       const img = new Image();
-      img.onload = function () { groundEl = img; window.plateLocked = true; markLive(true); };
+      img.onload = function () {
+        groundEl = img;
+        window.covePlate = img;
+        window.plateLocked = true;
+        markLive(true);
+      };
       img.src = data;
     } catch (e) {}
   }

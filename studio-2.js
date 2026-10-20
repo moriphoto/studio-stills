@@ -170,6 +170,7 @@ function keepShadow(cutCanvas, origImg) {
     paper = paper / Math.max(1, pn);
     const xA = Math.max(0, Math.round(cx - spread));
     const xB = Math.min(w - 1, Math.round(cx + spread));
+    const soft = shadowSoft();
     for (let x = xA; x <= xB; x++) {
       const i = (y * w + x) * 4;
       if (d[i + 3] > 230) continue;
@@ -182,7 +183,7 @@ function keepShadow(cutCanvas, origImg) {
       if (x < band) edge *= x / band;
       if (x > w - 1 - band) edge *= (w - 1 - x) / band;
       if (y > h - 1 - band) edge *= (h - 1 - y) / band;
-      const oa = Math.round(Math.min(190, fade * edge * (1 - dx * dx) * Math.min(80, gap) * 2.2));
+      const oa = Math.round(Math.min(140, fade * edge * (1 - dx * dx) * Math.min(70, gap) * 1.6) * (1 - soft * 0.7));
       if (oa < 14) continue;
       if (oa <= d[i + 3]) continue;
       d[i] = od[i]; d[i + 1] = od[i + 1]; d[i + 2] = od[i + 2];

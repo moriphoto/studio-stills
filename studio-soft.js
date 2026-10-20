@@ -26,6 +26,12 @@ function bringBackObject(cutCanvas, origImg, steps) {
   ctx.putImageData(image, 0, 0);
 }
 
+function shadowSoft() {
+  const el = document.getElementById("shadow");
+  const v = el ? Number(el.value) : 55;
+  if (!isFinite(v)) return 0.55;
+  return Math.max(0, Math.min(100, v)) / 100;
+}
 function softenShadowAlpha(canvas) {
   const ctx = canvas.getContext("2d", { willReadFrequently: true });
   const w = canvas.width, h = canvas.height;
@@ -33,7 +39,8 @@ function softenShadowAlpha(canvas) {
   const d = image.data;
   let a = new Float32Array(w * h);
   for (let i = 0; i < w * h; i++) a[i] = d[i * 4 + 3];
-  for (let p = 0; p < 6; p++) {
+  const passes = 3 + Math.round(shadowSoft() * 8);
+  for (let p = 0; p < passes; p++) {
     const n = new Float32Array(a);
     for (let y = 1; y < h - 1; y++) {
       for (let x = 1; x < w - 1; x++) {

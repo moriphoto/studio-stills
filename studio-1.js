@@ -50,7 +50,12 @@ function loadImageFile(src) {
   });
 }
 async function loadAssets() {
-  try { groundEl = await loadImageFile("studio-ground.jpg"); } catch (e) { groundEl = null; }
+  try {
+    const img = await loadImageFile("studio-ground.jpg");
+    if (!window.plateLocked) groundEl = img;
+  } catch (e) {
+    if (!window.plateLocked) groundEl = null;
+  }
   try {
     const img = await loadImageFile("studio-tone.jpg");
     const c = document.createElement("canvas");
@@ -78,10 +83,11 @@ function plateRgb(t) {
   return [a[1] + (b[1] - a[1]) * u, a[2] + (b[2] - a[2]) * u, a[3] + (b[3] - a[3]) * u];
 }
 function paintPlate(ctx) {
-  if (groundEl) {
+  const plate = (window.plateLocked && window.covePlate && window.covePlate.width) ? window.covePlate : groundEl;
+  if (plate && plate.width) {
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = "high";
-    ctx.drawImage(groundEl, 0, 0, W, H);
+    ctx.drawImage(plate, 0, 0, W, H);
     return;
   }
   const image = ctx.createImageData(W, H);

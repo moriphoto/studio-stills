@@ -57,9 +57,10 @@
       background: transparent;
     }
     button.opt.on {
-      color: var(--live);
-      border-color: var(--live);
-      box-shadow: 0 0 12px rgba(57,255,20,.4);
+      color: #07140a;
+      background: #39ff14;
+      border-color: #39ff14;
+      box-shadow: none;
     }
     #more {
       background: var(--panel);
@@ -209,6 +210,7 @@
     article img { width: 100%; aspect-ratio: 16/9; object-fit: contain; background: #000; display: block; }
     article .m { padding: 8px; font-size: 11px; display: flex; align-items: center; gap: 8px; }
     article .pick { flex: 1; display: flex; align-items: center; gap: 6px; color: #ccc; min-width: 0; overflow: hidden; }
+    article .pick input { width: 22px; height: 22px; accent-color: #39ff14; flex: none; }
     article .kill { margin-left: auto; background: none; border: 0; color: #8a8a8a; font-size: 16px; line-height: 1; padding: 0 4px; cursor: pointer; }
     article .kill:hover { color: #ff5a5a; }
     #status { color: var(--gold); font-size: 13px; }
@@ -250,16 +252,20 @@
           <label class="t"><input id="enhance" type="range" min="100" max="130" value="108"></label>
         </div>
         <div>
-          <div class="slider-head">Blend edge <b id="edgev">10</b></div>
-          <label class="t"><input id="edge" type="range" min="0" max="20" value="10"></label>
+          <div class="slider-head">Feather <b id="edgev">12</b></div>
+          <label class="t"><input id="edge" type="range" min="0" max="28" value="12"></label>
+        </div>
+        <div>
+          <div class="slider-head">Shadow <b id="shadowv">55</b></div>
+          <label class="t"><input id="shadow" type="range" min="0" max="100" value="55"></label>
         </div>
       </div>
       <div class="finish-row">
-        <button class="ghost opt" id="selAll" type="button">All</button>
+        <button class="ghost opt" id="selAll" type="button">Tick all</button>
         <button class="ghost" id="reset" type="button">Reset</button>
         <button class="ghost" id="dl" type="button">Singles</button>
         <button class="ghost" id="dlFolder" type="button">Folder</button>
-        <button class="gold" id="dlCeramics" type="button">To media</button>
+        <button class="ghost opt" id="dlCeramics" type="button">To media</button>
       </div>
     </div>
   </div>
@@ -281,7 +287,7 @@
       <div><img id="calSrc" alt="Pick floor"></div>
       <div id="calPrevWrap" hidden>
         <img id="calPrev" alt="Plate">
-        <button class="gold" id="calUse" style="margin-top:12px">Use this plate</button>
+        <button class="ghost opt" id="calUse" style="margin-top:12px">Use this plate</button>
         <button class="ghost" id="calClose" style="margin-top:12px">Close</button>
       </div>
     </div>
@@ -289,10 +295,6 @@
 
   <section id="heroWrap" hidden>
     <img id="hero" alt="still">
-    <div class="retouch">
-      <button class="ghost opt" id="rmBrush" type="button">Remove</button>
-      <button class="gold" id="applyEdit" type="button">Keep</button>
-    </div>
   </section>
 
   <div class="grid" id="grid"></div>

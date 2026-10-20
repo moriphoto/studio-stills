@@ -162,27 +162,31 @@ if (dlFolder) dlFolder.onclick = async function () {
 
 const dlCeramics = document.getElementById("dlCeramics");
 if (dlCeramics) dlCeramics.onclick = async function () {
-  const picked = tickedFramed();
-  const notDone = items.filter(function (it) { return it.selected !== false && !it.framed; });
+  const picked = items.filter(function (it) { return it.framed; });
+  const waiting = items.filter(function (it) { return !it.framed; });
   if (!picked.length) {
-    status(notDone.length ? "Process the pictures first, then To media." : "Tick a picture, then To media.");
+    status(waiting.length ? "Process the pictures first, then To media." : "Add pictures, then To media.");
     return;
   }
-  status("To media… " + picked.length + " picture" + (picked.length === 1 ? "" : "s") + ".");
+  items.forEach(function (it) { if (it.framed) it.selected = true; });
+  render();
+  dlCeramics.classList.add("on");
+  status("To media… " + picked.length + " of " + items.length + ".");
   const stamp = packStamp();
   try {
     if (typeof window.pushStillsToMedia === "function") {
       const n = await window.pushStillsToMedia(picked, stamp, status);
-      status(n + " in Media, folder inbox/" + stamp + ".");
+      status(n + " of " + items.length + " in Media, folder inbox/" + stamp + ".");
       window.open("https://moriphoto.github.io/jm-website/admin/", "_blank", "noopener");
       return;
     }
   } catch (err) {
-    status("Could not sign in. Downloading a zip instead.");
+    dlCeramics.classList.remove("on");
+    status("Could not sign in. Downloading a zip of " + picked.length + ".");
   }
   try {
     const n = await zipTicked("inbox/" + stamp, "inbox-" + stamp);
-    if (n) status(n + " pictures in the zip. The website did not take them.");
+    if (n) status(n + " of " + items.length + " in the zip. The website did not take them.");
   } catch (err2) {
     status("To media failed. " + (err2 && err2.message ? err2.message : ""));
   }

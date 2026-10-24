@@ -60,9 +60,7 @@ function composeIntact(cutCanvas, origImg) {
   hardenMask(cutCanvas, 72);
   if (s.bringBack) bringBackObject(cutCanvas, origImg, 4);
   dropIslands(cutCanvas);
-  keepShadow(cutCanvas, origImg);
   fadeFrameEdge(cutCanvas);
-  softenShadowAlpha(cutCanvas);
   dropIslands(cutCanvas);
   featherEdge(cutCanvas, Math.max(5, s.edge || 8));
   gradeCut(cutCanvas, s.enhance);

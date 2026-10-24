@@ -164,9 +164,8 @@
       font-size: 12px;
     }
 
-    #rmBrush.on { color: var(--live); border-color: var(--live); }
-
     #heroWrap { max-width: 520px; margin: 0 auto; padding: 14px 18px 8px; display: flex; flex-direction: column; gap: 10px; }
+    .hero-box { position: relative; }
     #hero {
       width: 100%;
       max-height: none;
@@ -178,8 +177,25 @@
       border: 1px solid var(--line);
       border-radius: 14px;
     }
-    .retouch button { flex: 1; height: 48px; border-radius: 12px; font-size: 15px; font-weight: 600; letter-spacing: 0; }
-    #rmBrush.on { color: #ff3b3b; border-color: #ff3b3b; box-shadow: 0 0 12px rgba(255,59,59,.35); }
+    #maskOverlay {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      border-radius: 14px;
+    }
+    #maskBar {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 12px;
+    }
+    #maskBar[hidden] { display: none; }
+    #maskBar .row { gap: 8px; }
 
     .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; max-width: 520px; margin: 0 auto; padding: 8px 18px 48px; }
     article { background: #111; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
@@ -219,6 +235,7 @@
       <input id="cam" type="file" accept="image/*" capture="environment">
     </div>
     <div class="secondary">
+      <button class="ghost opt" id="maskTool" type="button">Mask</button>
       <button class="ghost opt" id="collection" type="button">Collection</button>
       <button class="ghost opt" id="shareLink" type="button">Link</button>
       <button class="ghost opt" id="moreBtn" type="button">More</button>
@@ -255,7 +272,20 @@
   <div class="drop" id="drop">Drop original JPEGs. Object centred.</div>
 
   <section id="heroWrap" hidden>
-    <img id="hero" alt="still">
+    <div class="hero-box">
+      <img id="hero" alt="still">
+      <canvas id="maskOverlay"></canvas>
+    </div>
+    <div id="maskBar" hidden>
+      <div class="row">
+        <button class="ghost opt on" id="maskKeep" type="button">Keep</button>
+        <button class="ghost opt" id="maskDrop" type="button">Unmask</button>
+      </div>
+      <div>
+        <div class="slider-head">Expand <b id="expandv">0</b></div>
+        <label class="t"><input id="expand" type="range" min="0" max="16" value="0"></label>
+      </div>
+    </div>
   </section>
 
   <div class="grid" id="grid"></div>
@@ -267,6 +297,7 @@
   <script src="studio-dir.js"></script>
   <script src="studio-seed.js"></script>
   <script src="studio-soft.js"></script>
+  <script src="studio-mask.js"></script>
   <script src="studio-3.js"></script>
   <script src="studio-layers.js"></script>
   <script src="studio-ui.js"></script>

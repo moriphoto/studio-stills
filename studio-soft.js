@@ -72,7 +72,8 @@ function composeIntact(cutCanvas, origImg) {
   const ctx = out.getContext("2d");
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = "high";
-  paintPlate(ctx);
+  if (typeof paintPaper === "function") paintPaper(ctx, origImg, cutCanvas);
+  else paintPlate(ctx);
   ctx.drawImage(cutCanvas, 0, 0, cutCanvas.width, cutCanvas.height, fit.dx, fit.dy, fit.dw, fit.dh);
   return { canvas: out, photo: cutCanvas, bbox: { x: fit.dx, y: fit.dy, w: fit.dw, h: fit.dh }, meanLuma: tone.l, width: W, height: H };
 }

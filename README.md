@@ -2,6 +2,6 @@
 
 Live: https://moriphoto.github.io/studio-stills/
 
-Tick thumbs → process → download singles, a folder zip, or pack for ceramics media (`inbox/YYYY-MM-DD`).
+Drop original JPEGs. Object centred. Process samples the real paper left and right, extends it to 1920 × 1080, cuts the object, keeps the foot and real contact shadow.
 
-Calibrate holds the optional top colour. Leave it black if the cove is already right.
+Enhance and Feather stay. Calibrate two-pick is off. Paper from the JPEG is the plate.

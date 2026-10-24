@@ -50,12 +50,9 @@ function loadImageFile(src) {
   });
 }
 async function loadAssets() {
-  try {
-    const img = await loadImageFile("studio-ground.jpg");
-    if (!window.plateLocked) groundEl = img;
-  } catch (e) {
-    if (!window.plateLocked) groundEl = null;
-  }
+  window.plateLocked = false;
+  window.covePlate = null;
+  try { localStorage.removeItem("cove-plate"); } catch (e) {}
   try {
     const img = await loadImageFile("studio-tone.jpg");
     const c = document.createElement("canvas");
@@ -74,6 +71,101 @@ async function loadAssets() {
     if (n > 80) tone = { l: (0.2126*r+0.7152*g+0.0722*b)/n, r:r/n, g:g/n, b:b/n };
   } catch (e) {}
 }
+
+function samplePaperRamp(origImg, cutCanvas) {
+  if (!origImg || !origImg.width) return null;
+  const w = origImg.width, h = origImg.height;
+  const c = document.createElement("canvas");
+  c.width = w; c.height = h;
+  const ctx = c.getContext("2d", { willReadFrequently: true });
+  ctx.drawImage(origImg, 0, 0);
+  const od = ctx.getImageData(0, 0, w, h).data;
+  let mask = null;
+  if (cutCanvas && cutCanvas.width === w && cutCanvas.height === h) {
+    mask = cutCanvas.getContext("2d", { willReadFrequently: true }).getImageData(0, 0, w, h).data;
+  }
+  const strip = Math.max(14, Math.round(w * 0.18));
+  const bins = 96;
+  const ramp = [];
+  let total = 0;
+  for (let b = 0; b < bins; b++) {
+    const y0 = Math.floor(b * h / bins);
+    const y1 = Math.min(h, Math.floor((b + 1) * h / bins));
+    let R = 0, G = 0, B = 0, n = 0;
+    for (let y = y0; y < y1; y += 2) {
+      for (let side = 0; side < 2; side++) {
+        const x0 = side === 0 ? 2 : Math.max(0, w - strip);
+        const x1 = side === 0 ? Math.min(w, strip) : w - 2;
+        for (let x = x0; x < x1; x += 3) {
+          const i = (y * w + x) * 4;
+          if (mask && mask[i + 3] > 48) continue;
+          R += od[i]; G += od[i + 1]; B += od[i + 2]; n++;
+        }
+      }
+    }
+    total += n;
+    ramp.push(n > 6 ? { r: R / n, g: G / n, b: B / n } : null);
+  }
+  if (total < 80) return null;
+  for (let i = 0; i < bins; i++) {
+    if (ramp[i]) continue;
+    let prev = null, next = null;
+    for (let j = i - 1; j >= 0; j--) if (ramp[j]) { prev = ramp[j]; break; }
+    for (let j = i + 1; j < bins; j++) if (ramp[j]) { next = ramp[j]; break; }
+    ramp[i] = prev && next
+      ? { r: (prev.r + next.r) / 2, g: (prev.g + next.g) / 2, b: (prev.b + next.b) / 2 }
+      : (prev || next || { r: 18, g: 18, b: 18 });
+  }
+  return ramp.map(function (p, i) {
+    const a = ramp[Math.max(0, i - 1)], b = ramp[Math.min(bins - 1, i + 1)];
+    return {
+      r: (a.r + p.r * 2 + b.r) / 4,
+      g: (a.g + p.g * 2 + b.g) / 4,
+      b: (a.b + p.b * 2 + b.b) / 4
+    };
+  });
+}
+
+function buildPlateFromRamp(ramp) {
+  const c = document.createElement("canvas");
+  c.width = W; c.height = H;
+  const ctx = c.getContext("2d");
+  const img = ctx.createImageData(W, H);
+  const d = img.data;
+  const n = ramp.length;
+  for (let y = 0; y < H; y++) {
+    const t = y / Math.max(1, H - 1);
+    const idx = t * (n - 1);
+    const i0 = Math.floor(idx);
+    const i1 = Math.min(n - 1, i0 + 1);
+    const u = idx - i0;
+    const a = ramp[i0], b = ramp[i1];
+    const rr = (a.r + (b.r - a.r) * u) | 0;
+    const gg = (a.g + (b.g - a.g) * u) | 0;
+    const bb = (a.b + (b.b - a.b) * u) | 0;
+    for (let x = 0; x < W; x++) {
+      const i = (y * W + x) * 4;
+      d[i] = rr; d[i + 1] = gg; d[i + 2] = bb; d[i + 3] = 255;
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+  return c;
+}
+
+function paintPaper(ctx, origImg, cutCanvas) {
+  const ramp = samplePaperRamp(origImg, cutCanvas);
+  if (ramp) {
+    const plate = buildPlateFromRamp(ramp);
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = "high";
+    ctx.drawImage(plate, 0, 0, W, H);
+    window.paperOk = true;
+    return;
+  }
+  window.paperOk = false;
+  paintPlate(ctx);
+}
+
 function plateRgb(t) {
   const stops = [[0,0,0,0],[0.22,5,5,5],[0.42,26,26,26],[0.62,106,106,106],[0.82,228,228,228],[1,255,255,255]];
   let i = 0;

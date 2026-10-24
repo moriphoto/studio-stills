@@ -169,14 +169,13 @@ function loadImage(file){
 
 let assetsReady = null;
 document.getElementById("run").onclick = async () => {
-  if (!items.length) { status("Add original JPEGs first, then Process all."); return; }
+  if (!items.length) { status("Add original JPEGs first, then Process."); return; }
   const bar = readSettings();
   const btn = document.getElementById("run");
   btn.disabled = true;
   try {
     if (!assetsReady) assetsReady = loadAssets();
     await assetsReady;
-    if (window.plateLocked && window.covePlate) groundEl = window.covePlate;
     const todo = [];
     for (let i = 0; i < items.length; i++) if (items[i].selected !== false) todo.push(items[i]);
     if (!todo.length) { status("Tick a picture underneath, then Process."); btn.disabled = false; return; }
@@ -201,7 +200,8 @@ document.getElementById("run").onclick = async () => {
       render();
     }
     const ok = todo.filter(function (x) { return x.framed; }).length;
-    status(ok ? ("Done — " + ok + " of " + todo.length + " at " + W + " × " + H + ".") : "Cut failed. Use the original JPEG.");
+    const paper = window.paperOk === false ? " Thin paper — check the object is centred." : "";
+    status(ok ? ("Done — " + ok + " of " + todo.length + " at " + W + " × " + H + "." + paper) : "Cut failed. Use the original JPEG.");
   } catch (err) {
     status("Process failed: " + (err && err.message ? err.message : "open Chrome console"));
   }

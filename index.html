@@ -100,7 +100,6 @@
     .icon svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.7; }
     a.icon { text-decoration: none; color: #fff; }
     #files, #cam { position: absolute; width: 0; height: 0; opacity: 0; pointer-events: none; }
-    #calTop { width: 28px; height: 28px; padding: 0; border: 1px solid #fff; background: none; cursor: pointer; }
 
     label.t {
       font-size: 11px;
@@ -165,30 +164,7 @@
       font-size: 12px;
     }
 
-    .cal-opt i {
-      display: inline-block;
-      width: 14px;
-      height: 14px;
-      margin-left: 6px;
-      border-radius: 50%;
-      border: 1px solid rgba(255,255,255,.35);
-      vertical-align: -2px;
-      background: #1a1a1a;
-    }
     #rmBrush.on { color: var(--live); border-color: var(--live); }
-    #cal { padding: 16px 28px 24px; border-bottom: 1px solid var(--line); }
-    #calSrc, #calPrev {
-      width: 100%;
-      max-height: 280px;
-      object-fit: contain;
-      background: #000;
-      cursor: crosshair;
-      display: block;
-      border: 1px solid var(--line);
-      border-radius: 8px;
-    }
-    #cal .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px; }
-    @media (max-width: 720px) { #cal { padding: 16px; } #cal .row { grid-template-columns: 1fr; } }
 
     #heroWrap { max-width: 520px; margin: 0 auto; padding: 14px 18px 8px; display: flex; flex-direction: column; gap: 10px; }
     #hero {
@@ -219,20 +195,13 @@
     article .kill { margin-left: auto; background: none; border: 0; color: #8a8a8a; font-size: 16px; line-height: 1; padding: 0 4px; cursor: pointer; }
     article .kill:hover { color: #ff5a5a; }
     #status { color: var(--gold); font-size: 13px; }
-    #calUse.on, #calibrate.on {
-      color: #07140a !important;
-      background: #39ff14 !important;
-      border-color: #39ff14 !important;
-      box-shadow: none !important;
-    }
-    #calPrev.armed { outline: 3px solid #39ff14; outline-offset: 2px; }
   </style>
 </head>
 <body>
   <header>
     <div>
       <h1>Cove</h1>
-      <p class="lead">One object. One ground.</p>
+      <p class="lead">One object. Paper from the JPEG.</p>
     </div>
     <a class="ghost icon" id="home" href="https://moriphoto.github.io/jm-website/admin/" title="Admin" aria-label="Admin">
       <svg viewBox="0 0 24 24"><path d="M4 11 L12 4 L20 11"/><path d="M7 10 V20 H17 V10"/></svg>
@@ -250,7 +219,6 @@
       <input id="cam" type="file" accept="image/*" capture="environment">
     </div>
     <div class="secondary">
-      <button class="ghost opt" id="calibrate" type="button">Calibrate</button>
       <button class="ghost opt" id="collection" type="button">Collection</button>
       <button class="ghost opt" id="shareLink" type="button">Link</button>
       <button class="ghost opt" id="moreBtn" type="button">More</button>
@@ -284,27 +252,7 @@
   </div>
 
   <div class="status-row"><span id="status"></span></div>
-  <div class="drop" id="drop">Or drop pictures here</div>
-
-  <section id="cal" hidden>
-    <p class="k">Calibrate</p>
-    <p class="lead">Tap the photo for the cove. The swatch is there if you want a set colour instead.</p>
-    <div class="cal-opt">
-      <button type="button" class="ghost opt" id="pickTop">Top <i id="topDot"></i></button>
-      <button type="button" class="ghost opt on" id="pickBase">Base <i id="baseDot"></i></button>
-      <button type="button" class="ghost opt" id="calColorOn">Swatch</button>
-      <label class="t" id="calTopWrap" hidden>Colour <input id="calTop" type="color" value="#1a1a1a" title="Top of the cove"></label>
-    </div>
-    <p class="k" id="calHint">Tap the colour around the base.</p>
-    <div class="row">
-      <div><img id="calSrc" alt="Pick floor"></div>
-      <div id="calPrevWrap" hidden>
-        <img id="calPrev" alt="Plate">
-        <button class="ghost opt" id="calUse" style="margin-top:12px">Use this plate</button>
-        <button class="ghost" id="calClose" style="margin-top:12px">Close</button>
-      </div>
-    </div>
-  </section>
+  <div class="drop" id="drop">Drop original JPEGs. Object centred.</div>
 
   <section id="heroWrap" hidden>
     <img id="hero" alt="still">
@@ -323,7 +271,6 @@
   <script src="studio-layers.js"></script>
   <script src="studio-ui.js"></script>
   <script src="studio-group.js"></script>
-  <script src="studio-cal.js"></script>
   <script src="admin-bridge.js"></script>
   <script src="media-push.js"></script>
   <script>

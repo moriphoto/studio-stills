@@ -11,7 +11,9 @@ window.shadowBrushOn = false;
 
 function toolCursor() {
   const hero = document.getElementById("hero");
-  if (hero) hero.style.cursor = (window.magicOn || window.shadowBrushOn) ? "crosshair" : "default";
+  if (!hero) return;
+  if (window.maskOn) { hero.style.cursor = "crosshair"; return; }
+  hero.style.cursor = (window.magicOn || window.shadowBrushOn) ? "crosshair" : "default";
 }
 function showHero(item) {
   activeItem = item;
@@ -21,6 +23,11 @@ function showHero(item) {
   wrap.hidden = false;
   hero.src = item.processedUrl || item.url;
   toolCursor();
+  if (typeof window.drawMaskOutline === "function") {
+    const draw = function () { window.drawMaskOutline(item); };
+    if (hero.complete) draw();
+    else hero.onload = draw;
+  }
 }
 function render() {
   const grid = document.getElementById("grid");
@@ -76,6 +83,21 @@ const magicBtn = document.getElementById("magic");
 if (magicBtn) magicBtn.onclick = function () { setTool(window.magicOn ? "" : "magic"); };
 const shBrushBtn = document.getElementById("shBrush");
 if (shBrushBtn) shBrushBtn.onclick = function () { setTool(window.shadowBrushOn ? "" : "shadow"); };
+
+const maskBtn = document.getElementById("maskTool");
+if (maskBtn) maskBtn.onclick = function () { setMaskOn(!window.maskOn); };
+const maskKeep = document.getElementById("maskKeep");
+if (maskKeep) maskKeep.onclick = function () { setMaskMode("keep"); };
+const maskDrop = document.getElementById("maskDrop");
+if (maskDrop) maskDrop.onclick = function () { setMaskMode("unmask"); };
+const expand = document.getElementById("expand");
+if (expand) expand.oninput = function (e) {
+  const v = document.getElementById("expandv");
+  if (v) v.textContent = e.target.value;
+  if (!activeItem) return;
+  activeItem.maskExpand = Number(e.target.value) || 0;
+  resitMask(activeItem);
+};
 
 async function stampOriginal(item, outX, outY) {
   if (!item.framed) { status("Process first, then paint."); return; }
@@ -136,7 +158,29 @@ drop.ondrop = e => { e.preventDefault(); addFiles(e.dataTransfer.files); };
 const heroEl = document.getElementById("hero");
 if (heroEl) {
   heroEl.onpointerdown = function (e) {
-    if (!activeItem || (!window.magicOn && !window.shadowBrushOn)) return;
+    if (!activeItem) return;
+    if (window.maskOn) {
+      e.preventDefault();
+      const paint = function (ev) {
+        const rect = heroEl.getBoundingClientRect();
+        const fw = activeItem.framed ? activeItem.framed.width : 1920;
+        const fh = activeItem.framed ? activeItem.framed.height : 1080;
+        const x = (ev.clientX - rect.left) / rect.width * fw;
+        const y = (ev.clientY - rect.top) / rect.height * fh;
+        paintMask(activeItem, x, y);
+      };
+      paint(e);
+      const move = function (ev) { paint(ev); };
+      const up = async function () {
+        window.removeEventListener("pointermove", move);
+        window.removeEventListener("pointerup", up);
+        await resitMask(activeItem);
+      };
+      window.addEventListener("pointermove", move);
+      window.addEventListener("pointerup", up);
+      return;
+    }
+    if (!window.magicOn && !window.shadowBrushOn) return;
     e.preventDefault();
     const paint = function (ev) {
       const rect = heroEl.getBoundingClientRect();
@@ -187,6 +231,12 @@ document.getElementById("run").onclick = async () => {
         item.cut = await cutFromFile(item.file, bar, status);
         item.framed = item.cut.canvas;
         item.origImg = await loadImage(item.file);
+        if (item.cut && item.cut.photo) item.maskBase = cloneCanvas(item.cut.photo);
+        item.maskExpand = 0;
+        const exp = document.getElementById("expand");
+        if (exp) exp.value = "0";
+        const expv = document.getElementById("expandv");
+        if (expv) expv.textContent = "0";
         if (item.framed.width !== W || item.framed.height !== H) {
           item.cut = forceFrame(item.cut);
           item.framed = item.cut.canvas;
@@ -220,6 +270,7 @@ function resetStudio() {
   if (hero) hero.removeAttribute("src");
   const web = document.getElementById("resWeb"); if (web) web.checked = true;
   setTool("");
+  setMaskOn(false);
   setShadowDir(0, "shC");
   status("Reset.");
 }
